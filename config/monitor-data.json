@@ -1,0 +1,26 @@
+{
+  "db_path": "05_database/fsap-month-report.duckdb",
+  "output_dir": "04_report_output/monitor-data",
+  "tasks": [
+    {
+      "view": "v_prod_monitor_daily_count",
+      "filename": "daily_data",
+      "type": "daily"
+    },
+    {
+      "view": "v_prod_monitor_hourly_count",
+      "filename": "hourly_data",
+      "type": "hourly"
+    },
+    {
+      "view": "v_prod_monitor_daily_jvm_count",
+      "filename": "jvm_daily_data",
+      "type": "daily"
+    },
+    {
+      "view": "v_prod_monitor_hourly_jvm_count",
+      "filename": "jvm_hourly_data",
+      "type": "hourly"
+    }
+  ]
+}

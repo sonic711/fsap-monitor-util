@@ -1,0 +1,21 @@
+target/
+.m2/
+.DS_Store
+.idea/
+*.iml
+tmp-ingest-test/
+hs_err_pid*.log
+
+# Runtime data
+logs/
+05_database/
+
+# Legacy Python project and workshop assets
+fsap-month-report-develop/
+workshop/
+
+# Generated / legacy docs
+doc/html/
+doc/*.md
+!doc/java-*.md
+!doc/maven-project-skeleton-and-pom-dependencies.md

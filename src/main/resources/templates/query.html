@@ -1,0 +1,294 @@
+<!DOCTYPE html>
+<html lang="zh-Hant" xmlns:th="http://www.thymeleaf.org">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>FSAP Monitor Utility</title>
+    <style>
+        :root {
+            color-scheme: light;
+            --bg: #f5efe5;
+            --panel: rgba(255, 252, 246, 0.94);
+            --line: #d9cfbe;
+            --ink: #1d1b18;
+            --muted: #6f6559;
+            --accent: #194d3f;
+            --accent-soft: #e7f0eb;
+            --warn: #8e2f1c;
+        }
+        * { box-sizing: border-box; }
+        body {
+            margin: 0;
+            font-family: "Iowan Old Style", "Noto Serif TC", serif;
+            color: var(--ink);
+            background:
+                radial-gradient(circle at top left, rgba(229, 208, 173, 0.35), transparent 34%),
+                radial-gradient(circle at bottom right, rgba(202, 227, 214, 0.42), transparent 28%),
+                linear-gradient(180deg, #fbf7f1, var(--bg));
+        }
+        a { color: var(--accent); }
+        .shell {
+            max-width: 1320px;
+            margin: 0 auto;
+            padding: 28px 18px 40px;
+        }
+        .hero {
+            display: grid;
+            gap: 14px;
+            margin-bottom: 22px;
+        }
+        .hero h1 {
+            margin: 0;
+            font-size: clamp(2.2rem, 5vw, 3.4rem);
+            line-height: 1;
+        }
+        .hero p {
+            margin: 0;
+            max-width: 780px;
+            color: var(--muted);
+            line-height: 1.65;
+        }
+        .meta, .quick {
+            display: flex;
+            flex-wrap: wrap;
+            gap: 10px;
+        }
+        .chip, .quick a {
+            border: 1px solid var(--line);
+            background: rgba(255,255,255,0.7);
+            border-radius: 999px;
+            padding: 8px 12px;
+            text-decoration: none;
+            font-family: "SFMono-Regular", Menlo, monospace;
+            font-size: 0.88rem;
+        }
+        .layout {
+            display: grid;
+            gap: 18px;
+            grid-template-columns: 1.6fr 1fr;
+        }
+        .stack {
+            display: grid;
+            gap: 18px;
+        }
+        .panel {
+            border: 1px solid var(--line);
+            background: var(--panel);
+            border-radius: 18px;
+            padding: 18px;
+            box-shadow: 0 14px 34px rgba(57, 40, 17, 0.06);
+        }
+        .panel h2, .panel h3 {
+            margin: 0 0 10px;
+        }
+        .panel p {
+            margin: 0 0 12px;
+            color: var(--muted);
+            line-height: 1.6;
+        }
+        textarea {
+            width: 100%;
+            min-height: 220px;
+            border-radius: 14px;
+            border: 1px solid var(--line);
+            padding: 12px;
+            resize: vertical;
+            font: 14px/1.5 "SFMono-Regular", Menlo, monospace;
+            color: var(--ink);
+            background: #fffdfa;
+        }
+        button {
+            margin-top: 12px;
+            border: 0;
+            border-radius: 999px;
+            background: var(--accent);
+            color: #fff;
+            padding: 10px 16px;
+            font-weight: 700;
+            cursor: pointer;
+        }
+        pre {
+            margin: 0;
+            max-height: 420px;
+            overflow: auto;
+            white-space: pre-wrap;
+            word-break: break-word;
+            background: #fcfaf6;
+            border: 1px solid var(--line);
+            border-radius: 14px;
+            padding: 14px;
+            font: 13px/1.55 "SFMono-Regular", Menlo, monospace;
+        }
+        .list {
+            display: grid;
+            gap: 10px;
+        }
+        .item {
+            border: 1px solid var(--line);
+            border-radius: 14px;
+            padding: 12px;
+            background: rgba(255,255,255,0.66);
+        }
+        .item strong {
+            display: block;
+            margin-bottom: 4px;
+        }
+        .item small {
+            color: var(--muted);
+            display: block;
+            margin-top: 4px;
+        }
+        .file-links {
+            display: flex;
+            flex-wrap: wrap;
+            gap: 8px;
+            margin-top: 10px;
+        }
+        .file-links a {
+            font-family: "SFMono-Regular", Menlo, monospace;
+            font-size: 0.86rem;
+            text-decoration: none;
+            background: var(--accent-soft);
+            padding: 6px 10px;
+            border-radius: 999px;
+        }
+        .schema-list {
+            display: grid;
+            gap: 8px;
+            max-height: 520px;
+            overflow: auto;
+        }
+        .schema-row {
+            display: flex;
+            justify-content: space-between;
+            gap: 10px;
+            border-bottom: 1px dashed var(--line);
+            padding-bottom: 6px;
+        }
+        .muted {
+            color: var(--muted);
+        }
+        .error {
+            color: var(--warn);
+        }
+        @media (max-width: 980px) {
+            .layout {
+                grid-template-columns: 1fr;
+            }
+        }
+    </style>
+</head>
+<body>
+<div class="shell">
+    <section class="hero">
+        <h1>FSAP Monitor Utility</h1>
+        <p>這個 Java 版入口已整合 DuckDB 查詢、最近 SQL 歷史、批次報表產物與監控資料下載，適合離線部署在單一 `jar` 環境中使用。</p>
+        <div class="meta">
+            <span class="chip" th:text="'DB: ' + ${databaseFile}">DB</span>
+            <span class="chip" th:text="'Readonly: ' + ${readonly}">Readonly</span>
+            <span class="chip" th:text="'Schema Objects: ' + ${#lists.size(schemaTables)}">Schema</span>
+        </div>
+        <div class="quick">
+            <a href="#query">SQL Query</a>
+            <a href="#reports">Reports</a>
+            <a href="#monitor">Monitor Data</a>
+            <a href="#history">History</a>
+            <a href="#schema">Schema</a>
+        </div>
+    </section>
+
+    <section class="layout">
+        <div class="stack">
+            <article class="panel" id="query">
+                <h2>SQL Query</h2>
+                <p>`/api/query` 已可取代舊 Python API 的核心查詢能力，成功執行的 SQL 會自動記錄到查詢歷史。</p>
+                <textarea id="sql">SELECT table_name, table_type
+FROM information_schema.tables
+WHERE table_schema = 'main'
+ORDER BY table_type, table_name;</textarea>
+                <button type="button" onclick="runQuery()">Run Query</button>
+                <pre id="result">Press "Run Query" to execute.</pre>
+            </article>
+
+            <article class="panel" id="reports">
+                <h2>Recent Report Batches</h2>
+                <p>列出最近批次產出的彙總報表與 CSV。點擊即可透過本機 Spring Boot 下載。</p>
+                <div class="list" th:if="${!#lists.isEmpty(recentReportBatches)}">
+                    <section class="item" th:each="batch : ${recentReportBatches}">
+                        <strong th:text="${batch.batchName}">202604211930</strong>
+                        <small th:text="'Updated: ' + ${batch.modifiedAt}">Updated</small>
+                        <div class="file-links">
+                            <a th:each="file : ${batch.files}"
+                               th:href="@{/downloads/file(path=${file.relativePath})}"
+                               th:text="${file.filename}">file</a>
+                        </div>
+                    </section>
+                </div>
+                <div class="muted" th:if="${#lists.isEmpty(recentReportBatches)}">目前沒有批次報表產物。</div>
+            </article>
+
+            <article class="panel" id="monitor">
+                <h2>Monitor Data Exports</h2>
+                <p>這裡對應 `update-monitor-data` 的輸出，包含 `CSV` 與包裝好的 `JS` 檔案。</p>
+                <div class="file-links" th:if="${!#lists.isEmpty(monitorFiles)}">
+                    <a th:each="file : ${monitorFiles}"
+                       th:href="@{/downloads/file(path=${file.relativePath})}"
+                       th:text="${file.filename}">monitor-file</a>
+                </div>
+                <div class="muted" th:if="${#lists.isEmpty(monitorFiles)}">目前沒有監控資料輸出。</div>
+            </article>
+        </div>
+
+        <div class="stack">
+            <aside class="panel" id="history">
+                <h2>Recent Query History</h2>
+                <p>最近成功執行的 SQL 會記錄結果筆數與摘要，便於回頭重用。</p>
+                <div class="list" th:if="${!#lists.isEmpty(recentQueries)}">
+                    <div class="item" th:each="entry : ${recentQueries}">
+                        <strong th:text="${entry.title}">SELECT ...</strong>
+                        <small th:text="${entry.timestamp} + ' | rows=' + ${entry.resultCount}">meta</small>
+                    </div>
+                </div>
+                <div class="muted" th:if="${#lists.isEmpty(recentQueries)}">目前尚無查詢歷史。</div>
+            </aside>
+
+            <aside class="panel" id="schema">
+                <h2>Schema Snapshot</h2>
+                <p>由 DuckDB `information_schema` 與現有 views 載入，用來確認資料庫可讀性與 view 狀態。</p>
+                <div class="schema-list" th:if="${!#lists.isEmpty(schemaTables)}">
+                    <div class="schema-row" th:each="row : ${schemaTables}">
+                        <span th:text="${row.table_name}">table</span>
+                        <span class="muted" th:text="${row.table_type}">VIEW</span>
+                    </div>
+                </div>
+                <div class="muted" th:if="${#lists.isEmpty(schemaTables)}">目前無法讀取 schema。</div>
+            </aside>
+        </div>
+    </section>
+</div>
+
+<script>
+async function runQuery() {
+    const sql = document.getElementById("sql").value;
+    const result = document.getElementById("result");
+    result.classList.remove("error");
+    result.textContent = "Running...";
+    try {
+        const response = await fetch("/api/query", {
+            method: "POST",
+            headers: {"Content-Type": "application/json"},
+            body: JSON.stringify({sql})
+        });
+        const payload = await response.json();
+        if (!response.ok) {
+            throw new Error(payload.message || JSON.stringify(payload));
+        }
+        result.textContent = JSON.stringify(payload, null, 2);
+    } catch (error) {
+        result.textContent = "ERROR: " + error.message;
+        result.classList.add("error");
+    }
+}
+</script>
+</body>
+</html>

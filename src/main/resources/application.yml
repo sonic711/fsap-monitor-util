@@ -1,0 +1,34 @@
+spring:
+  application:
+    name: fsap-monitor-util
+  thymeleaf:
+    cache: false
+
+server:
+  port: 8080
+
+fsap:
+  paths:
+    base-dir: .
+    input-dir: 01_excel_input
+    source-lake-dir: 02_source_lake
+    sql-logic-dir: 03_sql_logic
+    report-output-dir: 04_report_output
+    database-file: 05_database/fsap-month-report.duckdb
+    log-dir: logs
+  ingest:
+    target-sheets:
+      - RT_CNT
+      - RT_TMSPT
+      - RT_PR_HH24
+      - RT_NODE_HH24
+      - BT_CNT
+      - MON_LOG
+      - ERR_LOG
+    filename-pattern: "FSAP每日交易統計(\\d{8})\\.xlsx"
+  views:
+    max-rounds: 3
+  web:
+    readonly: true
+  monitor:
+    config-file: config/monitor-data.json
