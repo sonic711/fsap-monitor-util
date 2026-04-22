@@ -435,15 +435,20 @@ java -jar fsap-monitor-util.jar serve --port 8080
 
 ---
 
-## 14. 建議下一步
+## 14. 落地結果與後續版本
 
-下一步有兩個合理選項：
+本文件中的第一版骨架已完成落地：
 
-1. 直接開始在 repo 建立 `pom.xml` 與 `src/main/java` 骨架
-2. 再補一份 `application.yml 與 config JSON 詳細欄位設計.md`
+1. `pom.xml` 已建立
+2. `src/main/java` 與 `src/main/resources` 骨架已建立
+3. 目前可打包單一可執行 `jar`
+4. CLI 與 Web 已共用同一套 service / DuckDB / 路徑處理
 
-如果目標是開始落地，我建議直接進入選項 1。
+後續版本重點建議如下：
+
+1. `v1.1`：在現有骨架上補 Web 任務操作頁，直接觸發 `doctor`、`sync-views`、`ingest`、`generate-report`、`update-monitor-data`
+2. `v1.2+`：再處理多查詢工作區、結果匯出 UI、schema 細節與啟動包裝等周邊功能
 
 ---
 
-*文件更新於: 2026-04-21*
+*文件更新於: 2026-04-22*

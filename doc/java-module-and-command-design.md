@@ -214,7 +214,12 @@ java -jar fsap-monitor-util.jar sync-views [--max-rounds 3] [--fail-fast]
 
 #### 備註
 
-第一版保留現在的「多輪重試」策略，不先做 DAG 分析。
+目前實作採用：
+
+- 先依 view 之間的相依關係排序
+- 再執行多輪重試作為 fallback
+
+也就是說，`sync-views` 已不是單純依檔名反覆重試，而是先做依賴排序，再保留容錯重試。
 
 ---
 

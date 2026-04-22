@@ -1,12 +1,15 @@
-# Java 尚未完成轉換功能清單
+# Java 版本範圍與後續版本規劃
 
-本文件整理目前專案由 Python 移植到 Java 的現況，目的不是描述規劃，而是提供實際驗證時可對照的缺口清單。
+本文件用來定義 Java 版目前可交付範圍，以及後續版本要補的功能。  
+它不再把所有未做項目都視為阻擋 release 的缺口，而是明確分成 `v1.0`、`v1.1`、`v1.2+`。
 
-更新日期：2026-04-21
+更新日期：2026-04-22
 
-## 已有 Java 對應的功能
+## v1.0 定義
 
-以下 Python 主功能目前已有 Java 版本可用：
+`v1.0` 的目標是完成核心 Python 主線的 Java 化，並可在離線環境中以單一 `jar` 方式運作。
+
+### v1.0 已納入的功能
 
 - `scripts/step1_ingest.py` -> Java `ingest`
 - `scripts/update_views_to_db.py` -> Java `sync-views`
@@ -14,166 +17,89 @@
 - `scripts/update_monitor_data/update_monitor_data.py` -> Java `update-monitor-data`
 - `scripts/api_server.py` -> Java `/api/query`、`/api/schema`、`/health`
 - `scripts/fsap-month-report-db.py` -> Java Web Dashboard 基礎版
+- 單一 `jar` 啟動模式
+- `Windows` 與 `Linux` 執行相容
 
-## 部分完成，但尚未 1:1 等價的功能
+### v1.0 驗證重點
 
-### 1. `fsap-month-report-db.py` 互動式查詢頁
+建議驗證順序如下：
 
-Java Web 版目前已有：
+1. CLI 主線：`doctor`、`sync-views`、`ingest`、`generate-report`、`update-monitor-data`
+2. API 主線：`/health`、`/api/query`、`/api/schema`
+3. Web Dashboard：首頁、查詢區、報表下載、監控資料下載、schema snapshot
 
-- 首頁 dashboard
-- SQL 查詢區
-- 查詢歷史
-- 報表產物下載
-- 監控資料下載
-- schema snapshot
+## v1.1 目標
 
-但仍未完整等價於原本 Streamlit 版本。
+`v1.1` 的主要目標是把目前需要 `java -jar ... <command>` 執行的操作，補成可由 UI 直接操作的任務頁。
 
-### 2. `api_server.py` 查詢 API 周邊行為
+### v1.1 預計納入
 
-Java API 核心查詢已可用，但仍缺少部分舊版 API server 的附加行為與運維細節。
+- 在 Web UI 直接觸發 `doctor`
+- 在 Web UI 直接觸發 `sync-views`
+- 在 Web UI 直接觸發 `ingest`
+- 在 Web UI 直接觸發 `generate-report`
+- 在 Web UI 直接觸發 `update-monitor-data`
+- 顯示任務執行中 / 成功 / 失敗狀態
+- 顯示任務完成後的輸出路徑與最近批次結果
 
-## 尚未轉換完成的功能清單
+### v1.1 不要求
 
-### A. 多分頁 SQL 查詢體驗
+- 不要求完全重做 Streamlit 的多 Tab 查詢體驗
+- 不要求先補齊所有查詢結果視覺化細節
+- 不要求文件站建置流程同步 Java 化
 
-原 Python `fsap-month-report-db.py` 提供：
+## v1.2+ Backlog
+
+以下項目不列入 `v1.0`，也不列入本次定義的 `v1.1`，統一移到 `v1.2+`：
+
+### 1. 多分頁 SQL 查詢體驗
 
 - 10 個獨立查詢 Tab
 - 每個 Tab 各自維護 SQL 內容
 - 每個 Tab 可分別執行
 
-Java 目前狀態：
+### 2. `sql_history.json` 的查詢槽位保存與還原
 
-- 只有單一 SQL 查詢區
-- 尚未提供多 Tab 或多查詢工作區
-
-### B. `sql_history.json` 的查詢槽位保存與還原
-
-原 Python 版本提供：
-
-- `logs/sql_history.json`
 - 保存 `sql_code_1` 到 `sql_code_10`
 - 下次開啟 UI 時可還原各查詢槽位內容
 
-Java 目前狀態：
+### 3. 查詢結果 TSV / CSV / JSONL 前端匯出區
 
-- 已有 `query_history.log.jsonl` 形式的查詢歷史
-- 尚未提供多槽位 SQL 保存/還原
+- TSV 結果區
+- CSV 文字區與下載
+- JSONL 文字區與下載
 
-### C. 查詢結果 TSV 匯出區
+### 4. 查詢結果表格化檢視
 
-原 Python 版本提供：
+- HTML 表格檢視器
+- 更接近原 Streamlit dataframe 的瀏覽方式
 
-- 將查詢結果轉成 TSV
-- 使用者可直接複製貼到 Excel / Google Sheets
+### 5. 查詢結果欄位型別顯示
 
-Java 目前狀態：
+- 查詢結果 `dtypes`
+- 欄位型別面板
 
-- 尚未提供 TSV 結果區
+### 6. 資料庫結構欄位明細展開
 
-### D. 查詢結果 CSV / JSONL 前端匯出區
+- 逐表 / 逐 view 查看欄位名稱與型別
 
-原 Python 版本提供：
+### 7. API request audit log
 
-- 頁面上直接顯示 CSV 文字
-- 頁面上直接顯示 JSONL 文字
-- 可直接下載 CSV / JSONL
+- 記錄 request method、path、body、status、duration
 
-Java 目前狀態：
+### 8. Java 啟動腳本與離線啟動包裝
 
-- `/api/query` 會回 JSON
-- 但前端尚未做查詢結果的 CSV / JSONL / TSV 匯出 UI
+- Java 專用 `.sh` / `.bat`
+- 更完整的離線啟動入口
 
-### E. 查詢結果表格化檢視
+### 9. 文件站建置流程整合
 
-原 Python 版本提供：
-
-- Streamlit dataframe 顯示
-- 適合直接瀏覽結果
-
-Java 目前狀態：
-
-- 目前主要顯示原始 JSON
-- 尚未做 HTML 表格檢視器
-
-### F. 查詢結果欄位型別顯示
-
-原 Python 版本提供：
-
-- 顯示查詢結果的 `dtypes`
-
-Java 目前狀態：
-
-- 尚未提供查詢結果欄位型別面板
-
-### G. 資料庫結構欄位明細展開
-
-原 Python 版本提供：
-
-- 側邊欄列出 table / view
-- 可展開查看每個物件的欄位名稱與型別
-
-Java 目前狀態：
-
-- 已有 schema snapshot
-- 尚未提供逐表欄位細節展開
-
-### H. API request audit log
-
-原 Python `api_server.py` 提供：
-
-- 將每次 request method、path、body、status、duration 寫入 log
-
-Java 目前狀態：
-
-- 尚未實作等價的 API 請求日誌
-
-### I. Web 端直接觸發任務
-
-目前 Java 已有 CLI：
-
-- `doctor`
-- `sync-views`
-- `ingest`
-- `generate-report`
-- `update-monitor-data`
-
-但 Java Web 目前尚未提供：
-
-- 在頁面上直接觸發上述任務
-- 顯示任務執行狀態
-- 顯示任務完成後的輸出位置
-
-### J. Java 版啟動腳本或離線啟動包裝
-
-原 Python 專案有：
-
-- `scripts/start-fsap-month-report-db.sh`
-
-Java 目前狀態：
-
-- 可直接使用 `java -jar ...`
-- 但尚未補 Java 專用啟動腳本、離線啟動包裝或整合執行入口
-
-### K. 文件站建置流程整合
-
-目前 repo 內尚有：
-
-- `scripts/build_docs.js`
-
-這不是 Python 主線功能，但目前也尚未整合進 Java / Maven 工作流。
-
-## 建議驗證優先順序
-
-若要自行驗證，建議依以下順序：
-
-1. CLI 主線：`doctor`、`sync-views`、`ingest`、`generate-report`、`update-monitor-data`
-2. API 主線：`/health`、`/api/query`、`/api/schema`
-3. Web Dashboard：首頁、報表下載、監控資料下載
-4. 再驗證本文件列出的缺口項目
+- `scripts/build_docs.js` 的替代或整合策略
 
 ## 結論
 
-目前專案的核心資料處理與查詢主線，已大致完成 Java 化；尚未完成的部分，主要集中在原 Streamlit UI 的互動體驗、查詢保存機制，以及部分周邊運維功能。
+目前 `v1.0` 的功能範圍已足以支撐核心 ETL、報表、查詢 API 與基礎 Web Dashboard。  
+後續版本的重點應明確收斂為：
+
+- `v1.1`：把 CLI 任務搬進 UI
+- `v1.2+`：補齊 Streamlit 等價互動體驗與周邊運維能力

@@ -4,6 +4,8 @@
 
 目標不是只列抽象風險，而是把後續真的會卡住設計、開發、測試、交付的決策點先攤開。
 
+補充說明：本文件保留的是 **kickoff 時點的決策與問題盤點紀錄**，不等同於目前版本完成度；目前版本範圍請以 [java-remaining-features.md](/Users/sonic711/Desktop/development/fsap-monitor-util/doc/java-remaining-features.md) 為準。
+
 ---
 
 ## 0. 已確認決策
@@ -14,7 +16,7 @@
 | :--- | :--- |
 | 核心資料引擎 | **保留 DuckDB** |
 | Java 遷移原則 | 優先保留既有 SQL 資產，避免同時進行 SQL 引擎遷移 |
-| 下一步 | 補充 Java 技術選型與替代方案評估 |
+| 後續設計 | Java 技術選型、模組切分、Maven 骨架文件皆已補齊 |
 
 這代表後續 Java 化應以「流程層重寫、資料引擎延用」為主軸，而不是重做整個資料平台。
 
@@ -57,7 +59,7 @@
   - `regexp_extract`
   - `string_split` / `UNNEST`
 - 報表邏輯大部分已經 SQL 化，因此 Java 移植不一定要重寫 SQL；但若不保留 DuckDB，成本會明顯放大。
-- 目前沒有任何 Java 專案骨架，尚未看到 `pom.xml`、`build.gradle`、`src/main/java` 等結構。
+- 這份文件建立當下尚無 Java 專案骨架；目前此項已完成，repo 內已有 `pom.xml`、`src/main/java`、`src/main/resources` 等結構。
 - 目前文件大量仍假設使用者會安裝 Python、建立 `.venv`、並在線上安裝套件，這與「離線可完整移植」的目標衝突。
 
 ---
@@ -258,22 +260,16 @@
 
 ---
 
-## 5. 建議的下一步
+## 5. 後續版本方向
 
-若要正式啟動 Java 移植，我建議先補以下產出物：
+本文件中的前置規劃工作已完成，後續可直接依版本路線推進：
 
-1. `Java 技術選型決策`
-   - JDK 版本
-   - Maven/Gradle
-   - Web framework
-   - Excel library
-   - DuckDB JDBC 版本
-2. `功能等價清單`
-   - 每支 Python 腳本對應到哪個 Java module / command
-3. `離線交付清單`
-   - 需打包的執行檔、JDK、設定檔、SQL、範例資料、啟動腳本
-4. `驗收基準`
-   - 以哪一批 Excel / SQL / 報表結果作為對照樣本
+1. `v1.0`
+   - 以 Java CLI + API + 基礎 Web Dashboard 交付
+2. `v1.1`
+   - 補 Web UI 任務操作頁，讓 CLI 操作可由頁面觸發
+3. `v1.2+`
+   - 補強多 Tab 查詢、查詢槽位保存、結果匯出 UI、schema 細節與周邊運維能力
 
 ---
 
@@ -292,4 +288,4 @@
 
 ---
 
-*文件更新於: 2026-04-21*
+*文件更新於: 2026-04-22*
