@@ -3,6 +3,10 @@ spring:
     name: fsap-monitor-util
   thymeleaf:
     cache: false
+  servlet:
+    multipart:
+      max-file-size: 200MB
+      max-request-size: 200MB
 
 server:
   port: 8080
@@ -29,6 +33,6 @@ fsap:
   views:
     max-rounds: 3
   web:
-    readonly: true
+    readonly: false
   monitor:
     config-file: config/monitor-data.json

@@ -48,12 +48,12 @@
             color: var(--muted);
             line-height: 1.65;
         }
-        .meta, .quick {
+        .meta {
             display: flex;
             flex-wrap: wrap;
             gap: 10px;
         }
-        .chip, .quick a {
+        .chip {
             border: 1px solid var(--line);
             background: rgba(255,255,255,0.7);
             border-radius: 999px;
@@ -62,10 +62,42 @@
             font-family: "SFMono-Regular", Menlo, monospace;
             font-size: 0.88rem;
         }
+        .tab-bar {
+            display: flex;
+            flex-wrap: wrap;
+            gap: 10px;
+        }
+        .tab-button {
+            border: 1px solid var(--line);
+            background: rgba(255,255,255,0.7);
+            border-radius: 999px;
+            padding: 8px 14px;
+            text-decoration: none;
+            font-family: "SFMono-Regular", Menlo, monospace;
+            font-size: 0.88rem;
+            color: var(--ink);
+            cursor: pointer;
+        }
+        .tab-button.active {
+            background: var(--accent);
+            color: #fff;
+            border-color: var(--accent);
+        }
+        .tab-panel {
+            display: none;
+        }
+        .tab-panel.active {
+            display: block;
+        }
         .layout {
             display: grid;
             gap: 18px;
             grid-template-columns: 1.6fr 1fr;
+        }
+        .task-grid {
+            display: grid;
+            gap: 14px;
+            grid-template-columns: repeat(2, minmax(0, 1fr));
         }
         .stack {
             display: grid;
@@ -80,6 +112,16 @@
         }
         .panel h2, .panel h3 {
             margin: 0 0 10px;
+        }
+        .panel-head {
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            gap: 12px;
+            margin-bottom: 10px;
+        }
+        .panel-head h2 {
+            margin: 0;
         }
         .panel p {
             margin: 0 0 12px;
@@ -106,6 +148,136 @@
             padding: 10px 16px;
             font-weight: 700;
             cursor: pointer;
+        }
+        button.ghost {
+            background: #f2ede4;
+            color: var(--ink);
+            border: 1px solid var(--line);
+        }
+        button:disabled {
+            opacity: 0.55;
+            cursor: not-allowed;
+        }
+        input[type="text"], input[type="number"], input[type="file"] {
+            width: 100%;
+            border-radius: 12px;
+            border: 1px solid var(--line);
+            padding: 10px 12px;
+            background: #fffdfa;
+            color: var(--ink);
+            font: 14px/1.4 "SFMono-Regular", Menlo, monospace;
+        }
+        label {
+            display: grid;
+            gap: 6px;
+            font-size: 0.92rem;
+            color: var(--muted);
+        }
+        .inline-check {
+            display: flex;
+            align-items: center;
+            gap: 8px;
+            color: var(--ink);
+            font-size: 0.9rem;
+        }
+        .inline-check input {
+            margin: 0;
+        }
+        .form-grid {
+            display: grid;
+            gap: 10px;
+        }
+        .actions {
+            display: flex;
+            flex-wrap: wrap;
+            gap: 10px;
+            align-items: center;
+        }
+        .task-card {
+            border: 1px solid var(--line);
+            border-radius: 14px;
+            padding: 14px;
+            background: rgba(255,255,255,0.74);
+        }
+        .task-card h3 {
+            margin-bottom: 8px;
+        }
+        .status-badge {
+            display: inline-flex;
+            align-items: center;
+            gap: 6px;
+            border-radius: 999px;
+            padding: 4px 10px;
+            font-family: "SFMono-Regular", Menlo, monospace;
+            font-size: 0.8rem;
+            border: 1px solid var(--line);
+            background: #f3eee4;
+        }
+        .status-running {
+            background: #e7f0eb;
+            color: var(--accent);
+            border-color: #b9d0c6;
+        }
+        .status-success {
+            background: #edf4e9;
+            color: #355d2a;
+            border-color: #bdd1b2;
+        }
+        .status-failed {
+            background: #fbece6;
+            color: var(--warn);
+            border-color: #e0b8ab;
+        }
+        .task-meta {
+            display: grid;
+            gap: 4px;
+            margin-top: 10px;
+            font-family: "SFMono-Regular", Menlo, monospace;
+            font-size: 0.83rem;
+            color: var(--muted);
+        }
+        .task-output {
+            margin-top: 8px;
+            font-family: "SFMono-Regular", Menlo, monospace;
+            font-size: 0.83rem;
+            word-break: break-word;
+        }
+        .task-details {
+            margin-top: 10px;
+            max-height: 180px;
+        }
+        .hint {
+            margin-top: 6px;
+            font-size: 0.82rem;
+            color: var(--muted);
+        }
+        .upload-status {
+            margin-top: 8px;
+            min-height: 1.4em;
+            font-size: 0.88rem;
+            color: var(--muted);
+        }
+        .mini-list {
+            display: grid;
+            gap: 8px;
+            max-height: 220px;
+            overflow: auto;
+        }
+        .mini-item {
+            border: 1px solid var(--line);
+            border-radius: 12px;
+            padding: 10px;
+            background: rgba(255,255,255,0.66);
+        }
+        .mini-item strong {
+            display: block;
+            font-family: "SFMono-Regular", Menlo, monospace;
+            font-size: 0.84rem;
+        }
+        .mini-item small {
+            color: var(--muted);
+            display: block;
+            margin-top: 4px;
         }
         pre {
             margin: 0;
@@ -175,6 +347,9 @@
             .layout {
                 grid-template-columns: 1fr;
             }
+            .task-grid {
+                grid-template-columns: 1fr;
+            }
         }
     </style>
 </head>
@@ -188,86 +363,458 @@
             <span class="chip" th:text="'Readonly: ' + ${readonly}">Readonly</span>
             <span class="chip" th:text="'Schema Objects: ' + ${#lists.size(schemaTables)}">Schema</span>
         </div>
-        <div class="quick">
-            <a href="#query">SQL Query</a>
-            <a href="#reports">Reports</a>
-            <a href="#monitor">Monitor Data</a>
-            <a href="#history">History</a>
-            <a href="#schema">Schema</a>
+        <div class="tab-bar">
+            <button type="button" class="tab-button active" data-tab-target="operations-tab" onclick="openTab('operations-tab', this)">Operations</button>
+            <button type="button" class="tab-button" data-tab-target="query-tab" onclick="openTab('query-tab', this)">Query Console</button>
         </div>
     </section>
 
-    <section class="layout">
-        <div class="stack">
-            <article class="panel" id="query">
-                <h2>SQL Query</h2>
-                <p>`/api/query` 已可取代舊 Python API 的核心查詢能力，成功執行的 SQL 會自動記錄到查詢歷史。</p>
-                <textarea id="sql">SELECT table_name, table_type
+    <section id="operations-tab" class="tab-panel active">
+        <div class="layout">
+            <div class="stack">
+                <article class="panel" id="operations">
+                    <h2>Operations</h2>
+                    <p>這裡把原本要用 `java -jar ...` 執行的主線命令搬進 UI。任務以單一背景 worker 執行，避免同時改動同一份 DuckDB 與輸出目錄。</p>
+                    <p th:if="${readonly}" class="error">目前為 readonly mode，任務按鈕已停用。啟動時可改用 `serve --writable` 或 `--fsap.web.readonly=false`。</p>
+                    <div class="task-grid">
+                        <section class="task-card">
+                            <h3>Doctor</h3>
+                            <p>檢查目錄、log 與 DuckDB 是否可正常存取。</p>
+                            <div class="actions">
+                                <button type="button" th:disabled="${readonly}" onclick="startDoctor()">Run Doctor</button>
+                            </div>
+                        </section>
+
+                        <section class="task-card">
+                            <h3>Sync Views</h3>
+                            <p>同步 `03_sql_logic/views` 到 DuckDB，已包含依賴排序與 retry。</p>
+                            <div class="form-grid">
+                                <label>
+                                    Max Rounds
+                                    <input id="sync-max-rounds" type="number" min="1" placeholder="default">
+                                </label>
+                                <label class="inline-check">
+                                    <input id="sync-fail-fast" type="checkbox">
+                                    Fail fast
+                                </label>
+                            </div>
+                            <div class="actions">
+                                <button type="button" th:disabled="${readonly}" onclick="startSyncViews()">Run Sync Views</button>
+                            </div>
+                        </section>
+
+                        <section class="task-card">
+                            <h3>Ingest</h3>
+                            <p>把 `01_excel_input/*.xlsx` 轉成 `02_source_lake/**/*.jsonl.gz`。</p>
+                            <div class="form-grid">
+                                <label>
+                                    Upload `.xlsx`
+                                    <input id="ingest-files" type="file" accept=".xlsx,application/vnd.openxmlformats-officedocument.spreadsheetml.sheet" multiple>
+                                </label>
+                                <div class="hint" th:text="'Upload target: ' + ${inputDirectory}">Upload target</div>
+                                <div id="ingest-upload-status" class="upload-status">尚未上傳檔案。</div>
+                                <div>
+                                    <div class="hint">Current `.xlsx` files</div>
+                                    <div id="input-file-list" class="mini-list">
+                                        <section class="mini-item" th:each="file : ${inputFiles}">
+                                            <strong th:text="${file.filename}">file.xlsx</strong>
+                                            <small th:text="${file.modifiedAt + ' | ' + file.sizeBytes + ' bytes'}">meta</small>
+                                        </section>
+                                    </div>
+                                    <div class="muted" id="input-file-empty" th:style="${#lists.isEmpty(inputFiles) ? '' : 'display:none;'}">目前沒有 `.xlsx` 檔案。</div>
+                                </div>
+                                <label>
+                                    Date
+                                    <input id="ingest-date" type="text" placeholder="YYYYMMDD">
+                                </label>
+                                <label>
+                                    Limit
+                                    <input id="ingest-limit" type="number" min="1" placeholder="latest N">
+                                </label>
+                                <label class="inline-check">
+                                    <input id="ingest-force" type="checkbox">
+                                    Force rebuild
+                                </label>
+                            </div>
+                            <div class="actions">
+                                <button type="button" class="ghost" th:disabled="${readonly}" onclick="uploadIngestFiles()">Upload Excel</button>
+                                <button type="button" th:disabled="${readonly}" onclick="startIngest()">Run Ingest</button>
+                            </div>
+                        </section>
+
+                        <section class="task-card">
+                            <h3>Generate Report</h3>
+                            <p>執行 `reports/*.sql`，輸出彙總 Excel 與各自 CSV。</p>
+                            <div class="form-grid">
+                                <label>
+                                    Timestamp
+                                    <input id="report-timestamp" type="text" placeholder="YYYYMMDDHHMM">
+                                </label>
+                                <label class="inline-check">
+                                    <input id="report-continue" type="checkbox">
+                                    Continue on error
+                                </label>
+                            </div>
+                            <div class="actions">
+                                <button type="button" th:disabled="${readonly}" onclick="startGenerateReport()">Run Generate Report</button>
+                            </div>
+                        </section>
+
+                        <section class="task-card">
+                            <h3>Update Monitor Data</h3>
+                            <p>依 `config/monitor-data.json` 匯出 monitor data 的 `CSV + JS`。</p>
+                            <div class="form-grid">
+                                <label>
+                                    Config Path
+                                    <input id="monitor-config" type="text" placeholder="config/monitor-data.json">
+                                </label>
+                            </div>
+                            <div class="actions">
+                                <button type="button" th:disabled="${readonly}" onclick="startUpdateMonitorData()">Run Update Monitor Data</button>
+                            </div>
+                        </section>
+                    </div>
+                </article>
+
+                <article class="panel" id="reports">
+                    <div class="panel-head">
+                        <h2>Recent Report Batches</h2>
+                        <button type="button" class="ghost" onclick="refreshReportBatches()">Refresh</button>
+                    </div>
+                    <p>列出最近批次產出的彙總報表與 CSV。點擊即可透過本機 Spring Boot 下載。</p>
+                    <div class="list" id="report-batch-list" th:if="${!#lists.isEmpty(recentReportBatches)}">
+                        <section class="item" th:each="batch : ${recentReportBatches}">
+                            <strong th:text="${batch.batchName}">202604211930</strong>
+                            <small th:text="'Updated: ' + ${batch.modifiedAt}">Updated</small>
+                            <div class="file-links">
+                                <a th:each="file : ${batch.files}"
+                                   th:href="@{/downloads/file(path=${file.relativePath})}"
+                                   th:text="${file.filename}">file</a>
+                            </div>
+                        </section>
+                    </div>
+                    <div class="muted" id="report-batch-empty" th:style="${#lists.isEmpty(recentReportBatches) ? '' : 'display:none;'}">目前沒有批次報表產物。</div>
+                </article>
+
+                <article class="panel" id="monitor">
+                    <h2>Monitor Data Exports</h2>
+                    <p>這裡對應 `update-monitor-data` 的輸出，包含 `CSV` 與包裝好的 `JS` 檔案。</p>
+                    <div class="file-links" th:if="${!#lists.isEmpty(monitorFiles)}">
+                        <a th:each="file : ${monitorFiles}"
+                           th:href="@{/downloads/file(path=${file.relativePath})}"
+                           th:text="${file.filename}">monitor-file</a>
+                    </div>
+                    <div class="muted" th:if="${#lists.isEmpty(monitorFiles)}">目前沒有監控資料輸出。</div>
+                </article>
+            </div>
+
+            <div class="stack">
+                <aside class="panel" id="task-status">
+                    <h2>Task Status</h2>
+                    <p>顯示目前執行中的任務，以及最近由 UI 觸發的批次結果。</p>
+                    <div id="task-running">
+                        <div th:if="${taskDashboard.runningTask == null}" class="muted">目前沒有任務執行中。</div>
+                        <section th:if="${taskDashboard.runningTask != null}" class="item">
+                            <strong th:text="${taskDashboard.runningTask.displayName}">Running</strong>
+                            <span class="status-badge status-running" th:text="${taskDashboard.runningTask.status}">RUNNING</span>
+                            <div class="task-meta">
+                                <span th:text="'Started: ' + ${taskDashboard.runningTask.startedAt}">Started</span>
+                                <span th:if="${!#strings.isEmpty(taskDashboard.runningTask.parameterSummary)}"
+                                      th:text="'Args: ' + ${taskDashboard.runningTask.parameterSummary}">Args</span>
+                            </div>
+                        </section>
+                    </div>
+                    <div class="list" id="task-history">
+                        <section class="item" th:each="task : ${taskDashboard.recentTasks}">
+                            <div style="display:flex;justify-content:space-between;gap:10px;align-items:center;">
+                                <strong th:text="${task.displayName}">Task</strong>
+                                <span class="status-badge"
+                                      th:classappend="${task.status == 'RUNNING' ? ' status-running' : (task.status == 'SUCCESS' ? ' status-success' : ' status-failed')}"
+                                      th:text="${task.status}">SUCCESS</span>
+                            </div>
+                            <small th:text="${task.startedAt + (task.finishedAt == null ? '' : ' -> ' + task.finishedAt)}">time</small>
+                            <small th:if="${!#strings.isEmpty(task.parameterSummary)}" th:text="${task.parameterSummary}">params</small>
+                            <small th:text="${task.summary}">summary</small>
+                            <small th:if="${!#strings.isEmpty(task.outputPath)}" th:text="'Output: ' + ${task.outputPath}">output</small>
+                        </section>
+                    </div>
+                    <div class="muted" id="task-history-empty" th:style="${#lists.isEmpty(taskDashboard.recentTasks) ? '' : 'display:none;'}">目前尚無 UI 任務執行紀錄。</div>
+                </aside>
+            </div>
+        </div>
+    </section>
+
+    <section id="query-tab" class="tab-panel">
+        <div class="layout">
+            <div class="stack">
+                <article class="panel" id="query">
+                    <h2>SQL Query</h2>
+                    <p>`/api/query` 已可取代舊 Python API 的核心查詢能力，成功執行的 SQL 會自動記錄到查詢歷史。</p>
+                    <textarea id="sql">SELECT table_name, table_type
 FROM information_schema.tables
 WHERE table_schema = 'main'
 ORDER BY table_type, table_name;</textarea>
-                <button type="button" onclick="runQuery()">Run Query</button>
-                <pre id="result">Press "Run Query" to execute.</pre>
-            </article>
+                    <button type="button" onclick="runQuery()">Run Query</button>
+                    <pre id="result">Press "Run Query" to execute.</pre>
+                </article>
+            </div>
 
-            <article class="panel" id="reports">
-                <h2>Recent Report Batches</h2>
-                <p>列出最近批次產出的彙總報表與 CSV。點擊即可透過本機 Spring Boot 下載。</p>
-                <div class="list" th:if="${!#lists.isEmpty(recentReportBatches)}">
-                    <section class="item" th:each="batch : ${recentReportBatches}">
-                        <strong th:text="${batch.batchName}">202604211930</strong>
-                        <small th:text="'Updated: ' + ${batch.modifiedAt}">Updated</small>
-                        <div class="file-links">
-                            <a th:each="file : ${batch.files}"
-                               th:href="@{/downloads/file(path=${file.relativePath})}"
-                               th:text="${file.filename}">file</a>
+            <div class="stack">
+                <aside class="panel" id="history">
+                    <h2>Recent Query History</h2>
+                    <p>最近成功執行的 SQL 會記錄結果筆數與摘要，便於回頭重用。</p>
+                    <div class="list" th:if="${!#lists.isEmpty(recentQueries)}">
+                        <div class="item" th:each="entry : ${recentQueries}">
+                            <strong th:text="${entry.title}">SELECT ...</strong>
+                            <small th:text="${entry.timestamp} + ' | rows=' + ${entry.resultCount}">meta</small>
                         </div>
-                    </section>
-                </div>
-                <div class="muted" th:if="${#lists.isEmpty(recentReportBatches)}">目前沒有批次報表產物。</div>
-            </article>
-
-            <article class="panel" id="monitor">
-                <h2>Monitor Data Exports</h2>
-                <p>這裡對應 `update-monitor-data` 的輸出，包含 `CSV` 與包裝好的 `JS` 檔案。</p>
-                <div class="file-links" th:if="${!#lists.isEmpty(monitorFiles)}">
-                    <a th:each="file : ${monitorFiles}"
-                       th:href="@{/downloads/file(path=${file.relativePath})}"
-                       th:text="${file.filename}">monitor-file</a>
-                </div>
-                <div class="muted" th:if="${#lists.isEmpty(monitorFiles)}">目前沒有監控資料輸出。</div>
-            </article>
-        </div>
-
-        <div class="stack">
-            <aside class="panel" id="history">
-                <h2>Recent Query History</h2>
-                <p>最近成功執行的 SQL 會記錄結果筆數與摘要，便於回頭重用。</p>
-                <div class="list" th:if="${!#lists.isEmpty(recentQueries)}">
-                    <div class="item" th:each="entry : ${recentQueries}">
-                        <strong th:text="${entry.title}">SELECT ...</strong>
-                        <small th:text="${entry.timestamp} + ' | rows=' + ${entry.resultCount}">meta</small>
                     </div>
-                </div>
-                <div class="muted" th:if="${#lists.isEmpty(recentQueries)}">目前尚無查詢歷史。</div>
-            </aside>
+                    <div class="muted" th:if="${#lists.isEmpty(recentQueries)}">目前尚無查詢歷史。</div>
+                </aside>
 
-            <aside class="panel" id="schema">
-                <h2>Schema Snapshot</h2>
-                <p>由 DuckDB `information_schema` 與現有 views 載入，用來確認資料庫可讀性與 view 狀態。</p>
-                <div class="schema-list" th:if="${!#lists.isEmpty(schemaTables)}">
-                    <div class="schema-row" th:each="row : ${schemaTables}">
-                        <span th:text="${row.table_name}">table</span>
-                        <span class="muted" th:text="${row.table_type}">VIEW</span>
+                <aside class="panel" id="schema">
+                    <h2>Schema Snapshot</h2>
+                    <p>由 DuckDB `information_schema` 與現有 views 載入，用來確認資料庫可讀性與 view 狀態。</p>
+                    <div class="schema-list" th:if="${!#lists.isEmpty(schemaTables)}">
+                        <div class="schema-row" th:each="row : ${schemaTables}">
+                            <span th:text="${row.table_name}">table</span>
+                            <span class="muted" th:text="${row.table_type}">VIEW</span>
+                        </div>
                     </div>
-                </div>
-                <div class="muted" th:if="${#lists.isEmpty(schemaTables)}">目前無法讀取 schema。</div>
-            </aside>
+                    <div class="muted" th:if="${#lists.isEmpty(schemaTables)}">目前無法讀取 schema。</div>
+                </aside>
+            </div>
         </div>
     </section>
 </div>
 
 <script>
+function openTab(tabId, button) {
+    document.querySelectorAll(".tab-panel").forEach(panel => panel.classList.remove("active"));
+    document.querySelectorAll(".tab-button").forEach(item => item.classList.remove("active"));
+    document.getElementById(tabId).classList.add("active");
+    if (button) {
+        button.classList.add("active");
+    }
+}
+
+function trimToNull(value) {
+    const text = (value || "").trim();
+    return text === "" ? null : text;
+}
+
+function parseOptionalInteger(elementId) {
+    const value = trimToNull(document.getElementById(elementId).value);
+    return value === null ? null : Number(value);
+}
+
+async function postTask(path, payload) {
+    const response = await fetch(path, {
+        method: "POST",
+        headers: {"Content-Type": "application/json"},
+        body: JSON.stringify(payload || {})
+    });
+    const payloadJson = await response.json().catch(() => ({}));
+    if (!response.ok) {
+        throw new Error(payloadJson.message || JSON.stringify(payloadJson));
+    }
+    await refreshTasks();
+    return payloadJson;
+}
+
+async function startDoctor() {
+    await postTask("/api/tasks/doctor", {});
+}
+
+async function startSyncViews() {
+    await postTask("/api/tasks/sync-views", {
+        maxRounds: parseOptionalInteger("sync-max-rounds"),
+        failFast: document.getElementById("sync-fail-fast").checked
+    });
+}
+
+async function startIngest() {
+    await postTask("/api/tasks/ingest", {
+        force: document.getElementById("ingest-force").checked,
+        limit: parseOptionalInteger("ingest-limit"),
+        date: trimToNull(document.getElementById("ingest-date").value)
+    });
+}
+
+async function startGenerateReport() {
+    await postTask("/api/tasks/generate-report", {
+        timestamp: trimToNull(document.getElementById("report-timestamp").value),
+        continueOnError: document.getElementById("report-continue").checked
+    });
+}
+
+async function startUpdateMonitorData() {
+    await postTask("/api/tasks/update-monitor-data", {
+        configPath: trimToNull(document.getElementById("monitor-config").value)
+    });
+}
+
+async function uploadIngestFiles() {
+    const input = document.getElementById("ingest-files");
+    const status = document.getElementById("ingest-upload-status");
+    if (!input.files || input.files.length === 0) {
+        status.textContent = "請先選擇至少一個 .xlsx 檔案。";
+        status.classList.add("error");
+        return;
+    }
+
+    status.classList.remove("error");
+    status.textContent = "Uploading...";
+
+    const formData = new FormData();
+    for (const file of input.files) {
+        formData.append("files", file);
+    }
+
+    try {
+        const response = await fetch("/api/tasks/ingest/upload", {
+            method: "POST",
+            body: formData
+        });
+        const payload = await response.json().catch(() => ({}));
+        if (!response.ok) {
+            throw new Error(payload.message || JSON.stringify(payload));
+        }
+        const uploadedNames = (payload.files || []).map(file => file.filename).join(", ");
+        status.textContent = `Uploaded: ${uploadedNames}`;
+        input.value = "";
+        await refreshInputFiles();
+    } catch (error) {
+        status.textContent = "ERROR: " + error.message;
+        status.classList.add("error");
+    }
+}
+
+function escapeHtml(text) {
+    return String(text)
+        .replaceAll("&", "&amp;")
+        .replaceAll("<", "&lt;")
+        .replaceAll(">", "&gt;");
+}
+
+function statusClass(status) {
+    if (status === "RUNNING") return "status-running";
+    if (status === "SUCCESS") return "status-success";
+    return "status-failed";
+}
+
+function renderRunningTask(task) {
+    const container = document.getElementById("task-running");
+    if (!task) {
+        container.innerHTML = '<div class="muted">目前沒有任務執行中。</div>';
+        return;
+    }
+    container.innerHTML = `
+        <section class="item">
+            <strong>${escapeHtml(task.displayName)}</strong>
+            <span class="status-badge status-running">${escapeHtml(task.status)}</span>
+            <div class="task-meta">
+                <span>Started: ${escapeHtml(task.startedAt)}</span>
+                ${task.parameterSummary ? `<span>Args: ${escapeHtml(task.parameterSummary)}</span>` : ""}
+            </div>
+        </section>
+    `;
+}
+
+function renderTaskHistory(tasks) {
+    const container = document.getElementById("task-history");
+    const empty = document.getElementById("task-history-empty");
+    if (!tasks || tasks.length === 0) {
+        container.innerHTML = "";
+        empty.style.display = "";
+        return;
+    }
+    empty.style.display = "none";
+    container.innerHTML = tasks.map(task => `
+        <section class="item">
+            <div style="display:flex;justify-content:space-between;gap:10px;align-items:center;">
+                <strong>${escapeHtml(task.displayName)}</strong>
+                <span class="status-badge ${statusClass(task.status)}">${escapeHtml(task.status)}</span>
+            </div>
+            <small>${escapeHtml(task.startedAt)}${task.finishedAt ? ` -> ${escapeHtml(task.finishedAt)}` : ""}</small>
+            ${task.parameterSummary ? `<small>${escapeHtml(task.parameterSummary)}</small>` : ""}
+            <small>${escapeHtml(task.summary || "")}</small>
+            ${task.outputPath ? `<small>Output: ${escapeHtml(task.outputPath)}</small>` : ""}
+            ${(task.detailLines && task.detailLines.length > 0) ? `<pre class="task-details">${escapeHtml(task.detailLines.join("\n"))}</pre>` : ""}
+        </section>
+    `).join("");
+}
+
+function renderInputFiles(files) {
+    const container = document.getElementById("input-file-list");
+    const empty = document.getElementById("input-file-empty");
+    if (!files || files.length === 0) {
+        container.innerHTML = "";
+        empty.style.display = "";
+        return;
+    }
+    empty.style.display = "none";
+    container.innerHTML = files.map(file => `
+        <section class="mini-item">
+            <strong>${escapeHtml(file.filename)}</strong>
+            <small>${escapeHtml(file.modifiedAt)} | ${escapeHtml(file.sizeBytes)} bytes</small>
+        </section>
+    `).join("");
+}
+
+function renderReportBatches(batches) {
+    const container = document.getElementById("report-batch-list");
+    const empty = document.getElementById("report-batch-empty");
+    if (!batches || batches.length === 0) {
+        container.innerHTML = "";
+        empty.style.display = "";
+        return;
+    }
+    empty.style.display = "none";
+    container.innerHTML = batches.map(batch => `
+        <section class="item">
+            <strong>${escapeHtml(batch.batchName)}</strong>
+            <small>Updated: ${escapeHtml(batch.modifiedAt)}</small>
+            <div class="file-links">
+                ${(batch.files || []).map(file => `
+                    <a href="/downloads/file?path=${encodeURIComponent(file.relativePath)}">${escapeHtml(file.filename)}</a>
+                `).join("")}
+            </div>
+        </section>
+    `).join("");
+}
+
+async function refreshTasks() {
+    try {
+        const response = await fetch("/api/tasks");
+        const payload = await response.json();
+        renderRunningTask(payload.runningTask);
+        renderTaskHistory(payload.recentTasks || []);
+    } catch (error) {
+        console.error("Unable to refresh tasks", error);
+    }
+}
+
+async function refreshInputFiles() {
+    try {
+        const response = await fetch("/api/tasks/ingest/files");
+        const payload = await response.json();
+        renderInputFiles(payload || []);
+    } catch (error) {
+        console.error("Unable to refresh input files", error);
+    }
+}
+
+async function refreshReportBatches() {
+    try {
+        const response = await fetch("/api/tasks/report-batches");
+        const payload = await response.json();
+        renderReportBatches(payload || []);
+    } catch (error) {
+        console.error("Unable to refresh report batches", error);
+    }
+}
+
 async function runQuery() {
     const sql = document.getElementById("sql").value;
     const result = document.getElementById("result");
@@ -289,6 +836,11 @@ async function runQuery() {
         result.classList.add("error");
     }
 }
+
+refreshTasks();
+refreshInputFiles();
+refreshReportBatches();
+setInterval(refreshTasks, 3000);
 </script>
 </body>
 </html>

@@ -59,6 +59,10 @@ public class FsapApplication {
                 translated.add("--fsap.web.readonly=true");
                 continue;
             }
+            if ("--writable".equals(current)) {
+                translated.add("--fsap.web.readonly=false");
+                continue;
+            }
             translated.add(current);
         }
         return translated.toArray(String[]::new);

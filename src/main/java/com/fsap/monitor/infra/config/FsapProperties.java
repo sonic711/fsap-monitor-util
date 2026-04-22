@@ -142,7 +142,7 @@ public class FsapProperties {
     }
 
     public static class Web {
-        private boolean readonly = true;
+        private boolean readonly = false;
 
         public boolean isReadonly() {
             return readonly;

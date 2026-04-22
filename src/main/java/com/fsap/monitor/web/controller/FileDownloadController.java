@@ -1,6 +1,8 @@
 package com.fsap.monitor.web.controller;
 
+import java.nio.charset.StandardCharsets;
 import java.nio.file.Path;
+import java.net.URLEncoder;
 
 import org.springframework.core.io.FileSystemResource;
 import org.springframework.core.io.Resource;
@@ -29,12 +31,28 @@ public class FileDownloadController {
         try {
             Path file = artifactBrowseService.resolveDownloadableFile(path);
             Resource resource = new FileSystemResource(file);
+            String filename = file.getFileName().toString();
             return ResponseEntity.ok()
-                    .header(HttpHeaders.CONTENT_DISPOSITION, "attachment; filename=\"" + file.getFileName() + "\"")
+                    .header(HttpHeaders.CONTENT_DISPOSITION, buildContentDisposition(filename))
                     .contentType(MediaType.APPLICATION_OCTET_STREAM)
                     .body(resource);
         } catch (IllegalArgumentException exception) {
             throw new ResponseStatusException(HttpStatus.NOT_FOUND, exception.getMessage(), exception);
         }
+    }
+
+    private String buildContentDisposition(String filename) {
+        String asciiFallback = filename
+                .replaceAll("[^\\x20-\\x7E]", "_")
+                .replace("\"", "_");
+        if (asciiFallback.isBlank()) {
+            asciiFallback = "download";
+        }
+        return "attachment; filename=\"" + asciiFallback + "\"; filename*=UTF-8''" + encodeUtf8(filename);
+    }
+
+    private String encodeUtf8(String value) {
+        return URLEncoder.encode(value, StandardCharsets.UTF_8)
+                .replace("+", "%20");
     }
 }

@@ -50,6 +50,26 @@ public class ArtifactBrowseService {
         return listFiles(monitorDir, 20);
     }
 
+    public List<FileView> loadInputExcelFiles() {
+        Path inputDir = projectPathService.inputDir();
+        if (!Files.isDirectory(inputDir)) {
+            return List.of();
+        }
+        try (Stream<Path> stream = Files.list(inputDir)) {
+            return stream
+                    .filter(Files::isRegularFile)
+                    .filter(path -> path.getFileName().toString().toLowerCase().endsWith(".xlsx"))
+                    .filter(path -> !path.getFileName().toString().startsWith("~$"))
+                    .sorted(Comparator
+                            .comparing((Path path) -> path.getFileName().toString(), Comparator.reverseOrder())
+                            .thenComparing(this::safeLastModified, Comparator.reverseOrder()))
+                    .map(path -> toFileView(path, inputDir))
+                    .collect(Collectors.toList());
+        } catch (Exception exception) {
+            return List.of();
+        }
+    }
+
     public List<FileView> loadLatestReportFiles(Path batchDir, int limit) {
         return listFiles(batchDir, limit);
     }
@@ -89,18 +109,18 @@ public class ArtifactBrowseService {
                     .sorted(Comparator.comparing(this::safeLastModified).reversed()
                             .thenComparing(path -> path.getFileName().toString()))
                     .limit(limit)
-                    .map(this::toFileView)
+                    .map(path -> toFileView(path, projectPathService.reportOutputDir()))
                     .collect(Collectors.toList());
         } catch (Exception exception) {
             return List.of();
         }
     }
 
-    private FileView toFileView(Path file) {
+    private FileView toFileView(Path file, Path relativeRoot) {
         try {
             return new FileView(
                     file.getFileName().toString(),
-                    projectPathService.reportOutputDir().relativize(file).toString().replace("\\", "/"),
+                    relativeRoot.relativize(file).toString().replace("\\", "/"),
                     Files.size(file),
                     formatTimestamp(file)
             );
