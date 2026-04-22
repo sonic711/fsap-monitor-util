@@ -74,10 +74,26 @@ public class ProjectPathService {
         Matcher matcher = PROJECT_RELATIVE_PATH_PATTERN.matcher(sql);
         StringBuffer buffer = new StringBuffer();
         while (matcher.find()) {
-            String rewritten = "'" + resolve(matcher.group(1)).toString().replace("\\", "/") + "'";
+            String rewritten = "'" + resolveSqlLiteralPath(matcher.group(1)) + "'";
             matcher.appendReplacement(buffer, Matcher.quoteReplacement(rewritten));
         }
         matcher.appendTail(buffer);
         return buffer.toString();
+    }
+
+    private String resolveSqlLiteralPath(String value) {
+        if (containsGlobPattern(value)) {
+            String base = baseDir().toString().replace("\\", "/");
+            String relative = value.replace("\\", "/");
+            if (base.endsWith("/")) {
+                return base + relative;
+            }
+            return base + "/" + relative;
+        }
+        return resolve(value).toString().replace("\\", "/");
+    }
+
+    private boolean containsGlobPattern(String value) {
+        return value.indexOf('*') >= 0 || value.indexOf('?') >= 0 || value.indexOf('[') >= 0;
     }
 }
