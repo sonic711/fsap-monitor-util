@@ -7,7 +7,9 @@ import java.sql.SQLException;
 import java.sql.Statement;
 import java.util.ArrayList;
 import java.util.Comparator;
+import java.util.LinkedHashMap;
 import java.util.List;
+import java.util.Map;
 import java.util.stream.Collectors;
 import java.util.stream.Stream;
 
@@ -16,6 +18,7 @@ import org.slf4j.LoggerFactory;
 import org.springframework.stereotype.Service;
 
 import com.fsap.monitor.core.service.ProjectPathService;
+import com.fsap.monitor.infra.config.FsapProperties;
 import com.fsap.monitor.infra.duckdb.DuckDbConnectionFactory;
 
 @Service
@@ -25,10 +28,16 @@ public class ViewSyncService {
 
     private final ProjectPathService projectPathService;
     private final DuckDbConnectionFactory connectionFactory;
+    private final FsapProperties properties;
 
-    public ViewSyncService(ProjectPathService projectPathService, DuckDbConnectionFactory connectionFactory) {
+    public ViewSyncService(
+            ProjectPathService projectPathService,
+            DuckDbConnectionFactory connectionFactory,
+            FsapProperties properties
+    ) {
         this.projectPathService = projectPathService;
         this.connectionFactory = connectionFactory;
+        this.properties = properties;
     }
 
     public ViewSyncResult syncViews(Integer maxRoundsOverride, boolean failFast) {
@@ -40,7 +49,6 @@ public class ViewSyncService {
     }
 
     public ViewSyncResult syncViews(Connection connection, Integer maxRoundsOverride, boolean failFast) {
-        int maxRounds = maxRoundsOverride != null ? maxRoundsOverride : 3;
         Path viewsDir = projectPathService.viewsDir();
         if (!Files.isDirectory(viewsDir)) {
             return new ViewSyncResult(0, 0, List.of("Views directory not found: " + viewsDir));
@@ -58,34 +66,58 @@ public class ViewSyncService {
 
         List<String> failures = new ArrayList<>();
         List<Path> pending = new ArrayList<>(sqlFiles);
+        Map<Path, String> lastErrors = new LinkedHashMap<>();
         int successCount = 0;
+        int configuredRounds = maxRoundsOverride != null ? maxRoundsOverride : properties.getViews().getMaxRounds();
+        int maxRounds = Math.max(configuredRounds, sqlFiles.size());
 
         dropExistingViews(connection, sqlFiles);
 
         for (int round = 1; round <= maxRounds && !pending.isEmpty(); round++) {
             LOGGER.info("View sync round {} with {} pending files", round, pending.size());
             List<Path> nextPending = new ArrayList<>();
+            int roundSuccessCount = 0;
 
             for (Path sqlFile : pending) {
                 try {
                     executeSqlFile(connection, sqlFile);
                     successCount++;
+                    roundSuccessCount++;
+                    lastErrors.remove(sqlFile);
                     LOGGER.info("View ready: {}", sqlFile.getFileName());
                 } catch (Exception exception) {
                     LOGGER.warn("View load failed for {}: {}", sqlFile.getFileName(), exception.getMessage());
+                    lastErrors.put(sqlFile, exception.getMessage());
                     if (failFast) {
                         failures.add(sqlFile.getFileName() + ": " + exception.getMessage());
                         return new ViewSyncResult(successCount, failures.size(), failures);
                     }
-                    if (round == maxRounds) {
-                        failures.add(sqlFile.getFileName() + ": " + exception.getMessage());
-                    } else {
-                        nextPending.add(sqlFile);
-                    }
+                    nextPending.add(sqlFile);
                 }
             }
 
+            if (nextPending.isEmpty()) {
+                pending = nextPending;
+                break;
+            }
+
+            if (roundSuccessCount == 0) {
+                LOGGER.warn("View sync stopped after round {} because no pending views could be resolved", round);
+                for (Path sqlFile : nextPending) {
+                    String message = lastErrors.getOrDefault(sqlFile, "Unknown error");
+                    failures.add(sqlFile.getFileName() + ": " + message);
+                }
+                return new ViewSyncResult(successCount, failures.size(), failures);
+            }
+
             pending = nextPending;
+        }
+
+        if (!pending.isEmpty()) {
+            for (Path sqlFile : pending) {
+                String message = lastErrors.getOrDefault(sqlFile, "View remained pending after max retry rounds");
+                failures.add(sqlFile.getFileName() + ": " + message);
+            }
         }
 
         return new ViewSyncResult(successCount, failures.size(), failures);

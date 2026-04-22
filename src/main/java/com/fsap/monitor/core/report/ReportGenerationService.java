@@ -3,6 +3,7 @@ package com.fsap.monitor.core.report;
 import java.io.BufferedWriter;
 import java.io.OutputStream;
 import java.math.BigDecimal;
+import java.math.BigInteger;
 import java.nio.charset.StandardCharsets;
 import java.nio.file.Files;
 import java.nio.file.Path;
@@ -251,24 +252,16 @@ public class ReportGenerationService {
             cell.setCellValue(booleanValue);
             return;
         }
-        if (value instanceof Integer integerValue) {
+        if (value instanceof BigInteger integerValue) {
             cell.setCellValue(integerValue.doubleValue());
-            return;
-        }
-        if (value instanceof Long longValue) {
-            cell.setCellValue(longValue.doubleValue());
-            return;
-        }
-        if (value instanceof Double doubleValue) {
-            cell.setCellValue(doubleValue);
-            return;
-        }
-        if (value instanceof Float floatValue) {
-            cell.setCellValue(floatValue.doubleValue());
             return;
         }
         if (value instanceof BigDecimal decimalValue) {
             cell.setCellValue(decimalValue.doubleValue());
+            return;
+        }
+        if (value instanceof Number numberValue) {
+            cell.setCellValue(numberValue.doubleValue());
             return;
         }
         cell.setCellValue(value.toString());
