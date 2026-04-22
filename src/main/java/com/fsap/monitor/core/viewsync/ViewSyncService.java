@@ -7,9 +7,14 @@ import java.sql.SQLException;
 import java.sql.Statement;
 import java.util.ArrayList;
 import java.util.Comparator;
+import java.util.HashMap;
+import java.util.HashSet;
 import java.util.LinkedHashMap;
 import java.util.List;
 import java.util.Map;
+import java.util.PriorityQueue;
+import java.util.Set;
+import java.util.regex.Pattern;
 import java.util.stream.Collectors;
 import java.util.stream.Stream;
 
@@ -63,6 +68,8 @@ public class ViewSyncService {
         } catch (Exception exception) {
             return new ViewSyncResult(0, 0, List.of("Unable to scan views directory: " + exception.getMessage()));
         }
+
+        sqlFiles = orderByDependencies(sqlFiles);
 
         List<String> failures = new ArrayList<>();
         List<Path> pending = new ArrayList<>(sqlFiles);
@@ -128,6 +135,87 @@ public class ViewSyncService {
         try (Statement statement = connection.createStatement()) {
             statement.execute(sql);
         }
+    }
+
+    private List<Path> orderByDependencies(List<Path> sqlFiles) {
+        Map<String, Path> viewFilesByName = sqlFiles.stream()
+                .collect(Collectors.toMap(
+                        this::viewName,
+                        path -> path,
+                        (left, right) -> left,
+                        LinkedHashMap::new
+                ));
+
+        Map<Path, Set<Path>> dependenciesByFile = new LinkedHashMap<>();
+        Map<Path, Integer> indegree = new LinkedHashMap<>();
+        Map<Path, List<Path>> dependents = new HashMap<>();
+
+        for (Path sqlFile : sqlFiles) {
+            Set<Path> dependencies = discoverDependencies(sqlFile, viewFilesByName);
+            dependenciesByFile.put(sqlFile, dependencies);
+            indegree.put(sqlFile, dependencies.size());
+            for (Path dependency : dependencies) {
+                dependents.computeIfAbsent(dependency, ignored -> new ArrayList<>()).add(sqlFile);
+            }
+        }
+
+        PriorityQueue<Path> ready = new PriorityQueue<>(Comparator.comparing(path -> path.getFileName().toString()));
+        for (Map.Entry<Path, Integer> entry : indegree.entrySet()) {
+            if (entry.getValue() == 0) {
+                ready.add(entry.getKey());
+            }
+        }
+
+        List<Path> ordered = new ArrayList<>();
+        while (!ready.isEmpty()) {
+            Path current = ready.poll();
+            ordered.add(current);
+            for (Path dependent : dependents.getOrDefault(current, List.of())) {
+                int nextValue = indegree.computeIfPresent(dependent, (ignored, value) -> value - 1);
+                if (nextValue == 0) {
+                    ready.add(dependent);
+                }
+            }
+        }
+
+        if (ordered.size() == sqlFiles.size()) {
+            return ordered;
+        }
+
+        List<Path> unresolved = sqlFiles.stream()
+                .filter(path -> !ordered.contains(path))
+                .sorted(Comparator.comparing(path -> path.getFileName().toString()))
+                .collect(Collectors.toList());
+        LOGGER.warn("View dependency ordering left {} files unresolved; falling back to retry ordering for those files", unresolved.size());
+        ordered.addAll(unresolved);
+        return ordered;
+    }
+
+    private Set<Path> discoverDependencies(Path sqlFile, Map<String, Path> viewFilesByName) {
+        String currentViewName = viewName(sqlFile);
+        String sqlContent;
+        try {
+            sqlContent = Files.readString(sqlFile).toLowerCase();
+        } catch (Exception exception) {
+            LOGGER.warn("Unable to inspect dependencies for {}: {}", sqlFile.getFileName(), exception.getMessage());
+            return Set.of();
+        }
+
+        Set<Path> dependencies = new HashSet<>();
+        for (Map.Entry<String, Path> candidate : viewFilesByName.entrySet()) {
+            if (candidate.getKey().equals(currentViewName)) {
+                continue;
+            }
+            Pattern pattern = Pattern.compile("\\b" + Pattern.quote(candidate.getKey()) + "\\b");
+            if (pattern.matcher(sqlContent).find()) {
+                dependencies.add(candidate.getValue());
+            }
+        }
+        return dependencies;
+    }
+
+    private String viewName(Path sqlFile) {
+        return sqlFile.getFileName().toString().replaceFirst("\\.sql$", "").toLowerCase();
     }
 
     private void dropExistingViews(Connection connection, List<Path> sqlFiles) {
