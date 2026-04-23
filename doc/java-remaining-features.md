@@ -3,7 +3,14 @@
 本文件用來定義 Java 版目前可交付範圍，以及後續版本要補的功能。  
 它不再把所有未做項目都視為阻擋 release 的缺口，而是明確分成 `v1.0`、`v1.1`、`v1.2+`。
 
-更新日期：2026-04-22
+更新日期：2026-04-23
+
+## 目前建置狀態
+
+- 專案目前使用 `Gradle Wrapper 8.13` 建置。
+- Spring Boot 版本為 `3.5.6`。
+- Maven `pom.xml` 已移除，不再作為現行打包入口。
+- 離線環境若要重新打包，請使用 `offline-maven-repo.zip` 與 `--offline -PofflineRepo=...`，流程見 `doc/java-gradle-offline-build.md`。
 
 ## v1.0 定義
 

@@ -198,6 +198,7 @@
 1. 離線環境是完全無網路，還是只有無法連外網、但可用內部私有套件源？
 2. 離線環境可否預先安裝 `JDK`，還是必須連 JRE/JDK 都一起打包？
 3. 建置方式要用 `Maven` 還是 `Gradle`？
+   - 目前已定案為 `Gradle Wrapper 8.13`，並用 Maven repository layout 的 `offline-maven-repo.zip` 作為離線依賴來源。
 4. 若目標環境離線，是否接受在建置階段先把所有 Java 依賴下載完成，再交付：
    - `fat jar`
    - `lib/` 依賴目錄

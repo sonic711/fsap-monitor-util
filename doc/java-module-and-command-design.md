@@ -46,7 +46,7 @@
 
 ## 3. 建議模組結構
 
-### 3.1 若先做單一 Maven 模組
+### 3.1 現行單一 Gradle 模組
 
 第一階段可先維持單一 `Spring Boot` 專案，但在套件上切乾淨：
 
@@ -66,14 +66,15 @@ src/main/java/com/fsap/monitor/
 
 ```text
 fsap-monitor-util/
-├── pom.xml
+├── settings.gradle
+├── build.gradle
 ├── fsap-core/
 ├── fsap-cli/
 ├── fsap-web/
 └── fsap-app/
 ```
 
-但第一階段不必急著拆 Maven reactor，先把套件邊界切清楚比較實際。
+但第一階段不必急著拆 Gradle multi-project build，先把套件邊界切清楚比較實際。
 
 ---
 
@@ -490,7 +491,7 @@ fsap:
 
 建議依以下順序進行：
 
-1. 建 `Maven + Spring Boot + picocli` 骨架
+1. 建 `Gradle Wrapper + Spring Boot + picocli` 骨架
 2. 實作 `ProjectPathService` 與 `DuckDbConnectionFactory`
 3. 實作 `ingest`
 4. 實作 `sync-views`

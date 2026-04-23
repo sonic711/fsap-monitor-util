@@ -1,6 +1,6 @@
 # FSAP Maven 專案骨架與 pom 依賴清單
 
-> 狀態：歷史文件。v1.1 之後專案已改為 Gradle Wrapper 建置，Spring Boot 版本改為 `3.5.6`，實際建置與離線 repository 準備請以 `doc/java-gradle-offline-build.md` 為準。
+> 狀態：歷史文件。v1.1 之後專案已改為 Gradle Wrapper 建置，Spring Boot 版本改為 `3.5.6`，`pom.xml` 已移除。請不要再依本文件建立或維護 Maven build；實際建置與離線 repository 準備請以 `doc/java-gradle-offline-build.md` 為準。
 
 本文件承接以下既有決策：
 
@@ -288,11 +288,11 @@ com.fsap.monitor
 
 ### 8.1 建議做法
 
-在有網路的建置環境先完成：
+本節為早期 Maven 方案，現行做法已改為：
 
-1. `mvn -U clean package`
-2. `mvn dependency:go-offline`
-3. 保留本地 Maven repository 或公司 Nexus/Artifactory 快照
+1. `GRADLE_USER_HOME=$PWD/.gradle-online ./gradlew clean bootJar testClasses zipOfflineMavenRepo`
+2. 產出 `build/offline-maven-repo.zip`
+3. 離線環境以 `gradle --offline -PofflineRepo=... bootJar` 或 `./gradlew --offline -PofflineRepo=... bootJar` 打包
 
 ### 8.2 離線環境交付物
 
@@ -441,7 +441,7 @@ java -jar fsap-monitor-util.jar serve --port 8080
 
 本文件中的第一版骨架已完成落地：
 
-1. `pom.xml` 已建立
+1. 早期 `pom.xml` 已由 `build.gradle` 取代
 2. `src/main/java` 與 `src/main/resources` 骨架已建立
 3. 目前可打包單一可執行 `jar`
 4. CLI 與 Web 已共用同一套 service / DuckDB / 路徑處理
