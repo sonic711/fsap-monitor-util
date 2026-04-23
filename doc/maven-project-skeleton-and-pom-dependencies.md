@@ -1,5 +1,7 @@
 # FSAP Maven 專案骨架與 pom 依賴清單
 
+> 狀態：歷史文件。v1.1 之後專案已改為 Gradle Wrapper 建置，Spring Boot 版本改為 `3.5.6`，實際建置與離線 repository 準備請以 `doc/java-gradle-offline-build.md` 為準。
+
 本文件承接以下既有決策：
 
 - 採用 `Java CLI + Spring Boot + Thymeleaf/HTMX + DuckDB JDBC`

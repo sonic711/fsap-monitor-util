@@ -1,0 +1,154 @@
+buildscript {
+    ext {
+        springBootVersion = '3.5.6'
+        dependencyManagementVersion = '1.1.7'
+    }
+
+    def offlineRepoPath = gradle.startParameter.projectProperties['offlineRepo'] ?: System.getProperty('offlineRepo')
+    repositories {
+        if (offlineRepoPath) {
+            maven { url = uri(offlineRepoPath) }
+        }
+        mavenCentral()
+        gradlePluginPortal()
+    }
+    dependencies {
+        classpath "org.springframework.boot:spring-boot-gradle-plugin:${springBootVersion}"
+        classpath "io.spring.gradle:dependency-management-plugin:${dependencyManagementVersion}"
+    }
+}
+
+apply plugin: 'java'
+apply plugin: 'org.springframework.boot'
+apply plugin: 'io.spring.dependency-management'
+
+group = 'com.fsap'
+version = '0.1.0-SNAPSHOT'
+description = 'FSAP monitor utility migrated from Python to Java'
+
+java {
+    toolchain {
+        languageVersion = JavaLanguageVersion.of(17)
+    }
+}
+
+def offlineRepoPath = gradle.startParameter.projectProperties['offlineRepo'] ?: System.getProperty('offlineRepo')
+
+repositories {
+    if (offlineRepoPath) {
+        maven { url = uri(offlineRepoPath) }
+    }
+    mavenCentral()
+}
+
+ext {
+    picocliVersion = '4.7.6'
+    duckdbVersion = '1.5.2.0'
+    poiVersion = '5.3.0'
+    commonsCsvVersion = '1.11.0'
+}
+
+dependencies {
+    implementation 'org.springframework.boot:spring-boot-starter'
+    implementation 'org.springframework.boot:spring-boot-starter-web'
+    implementation 'org.springframework.boot:spring-boot-starter-thymeleaf'
+    implementation 'org.springframework.boot:spring-boot-starter-validation'
+    implementation "info.picocli:picocli:${picocliVersion}"
+    implementation "org.duckdb:duckdb_jdbc:${duckdbVersion}"
+    implementation "org.apache.poi:poi-ooxml:${poiVersion}"
+    implementation 'com.fasterxml.jackson.core:jackson-databind'
+    implementation "org.apache.commons:commons-csv:${commonsCsvVersion}"
+
+    testImplementation 'org.springframework.boot:spring-boot-starter-test'
+}
+
+tasks.withType(JavaCompile).configureEach {
+    options.release = 17
+    options.encoding = 'UTF-8'
+}
+
+tasks.named('test') {
+    useJUnitPlatform()
+}
+
+tasks.named('bootJar') {
+    mainClass = 'com.fsap.monitor.FsapApplication'
+    archiveFileName = "${project.name}-${project.version}.jar"
+}
+
+tasks.register('prepareOfflineMavenRepo') {
+    group = 'offline'
+    description = 'Copies resolved Gradle module cache artifacts into a Maven-layout repository under build/offline-maven-repo.'
+    dependsOn 'bootJar', 'testClasses'
+
+    doLast {
+        def repoDir = layout.buildDirectory.dir('offline-maven-repo').get().asFile
+        def cacheRoot = new File(gradle.gradleUserHomeDir, 'caches/modules-2/files-2.1')
+
+        if (!cacheRoot.isDirectory()) {
+            throw new GradleException("Gradle module cache not found: ${cacheRoot}")
+        }
+
+        delete repoDir
+        copy {
+            from(cacheRoot) {
+                include '**/*.aar'
+                include '**/*.jar'
+                include '**/*.module'
+                include '**/*.pom'
+            }
+            into(repoDir)
+            eachFile { details ->
+                def segments = details.relativePath.segments
+                if (segments.length < 5) {
+                    details.exclude()
+                    return
+                }
+
+                def groupId = segments[0]
+                def artifactId = segments[1]
+                def versionId = segments[2]
+                def fileName = segments[4]
+                def targetSegments = groupId.tokenize('.') + [artifactId, versionId, fileName]
+                details.relativePath = new RelativePath(true, targetSegments as String[])
+            }
+            includeEmptyDirs = false
+            duplicatesStrategy = DuplicatesStrategy.INCLUDE
+        }
+
+        logger.lifecycle("Offline Maven repository prepared at: ${repoDir}")
+    }
+}
+
+tasks.register('zipOfflineMavenRepo', Zip) {
+    group = 'offline'
+    description = 'Packages build/offline-maven-repo as build/offline-maven-repo.zip.'
+    dependsOn 'prepareOfflineMavenRepo'
+    archiveFileName = 'offline-maven-repo.zip'
+    destinationDirectory = layout.buildDirectory
+    from(layout.buildDirectory.dir('offline-maven-repo'))
+}
+
+tasks.register('downloadGradleDistribution') {
+    group = 'offline'
+    description = 'Downloads gradle-8.13-all.zip for offline wrapper bootstrap.'
+    def distFile = layout.buildDirectory.file('offline-gradle/gradle-8.13-all.zip')
+    outputs.file(distFile)
+
+    doLast {
+        def outputFile = distFile.get().asFile
+        outputFile.parentFile.mkdirs()
+        ant.get(
+                src: 'https://services.gradle.org/distributions/gradle-8.13-all.zip',
+                dest: outputFile,
+                skipexisting: true
+        )
+        logger.lifecycle("Gradle distribution downloaded at: ${outputFile}")
+    }
+}
+
+tasks.register('prepareOfflineBundle') {
+    group = 'offline'
+    description = 'Prepares both offline Maven repository zip and Gradle distribution zip.'
+    dependsOn 'zipOfflineMavenRepo', 'downloadGradleDistribution'
+}

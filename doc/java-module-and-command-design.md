@@ -1,5 +1,7 @@
 # FSAP Java 模組切分與命令設計
 
+> 狀態更新：v1.1 之後專案建置工具已由 Maven 改為 Gradle Wrapper。本文的模組邊界與命令設計仍有效；涉及 `pom.xml` 或 Maven module 的描述視為早期規劃背景。
+
 本文件基於以下已確認技術方向整理：
 
 - `Java CLI + Spring Boot + Thymeleaf/HTMX + DuckDB JDBC`

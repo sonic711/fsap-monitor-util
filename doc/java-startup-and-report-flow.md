@@ -2,14 +2,14 @@
 
 本文件說明目前 Java 版 `fsap-monitor-util` 的實際操作流程，從啟動、檢查環境，到最終產生報告與監控輸出。
 
-更新日期：2026-04-22
+更新日期：2026-04-23
 
 ## 1. 前置條件
 
 ### 執行環境
 
 - Java 17
-- Maven
+- Gradle Wrapper
 
 ### 專案資料目錄
 
@@ -33,19 +33,21 @@ fsap-month-report-develop
 在 repo 根目錄執行：
 
 ```bash
-mvn -DskipTests package
+./gradlew clean bootJar -x test
 ```
 
 建置完成後，執行檔位置為：
 
 ```bash
-target/fsap-monitor-util-0.1.0-SNAPSHOT.jar
+build/libs/fsap-monitor-util-0.1.0-SNAPSHOT.jar
 ```
+
+若要準備離線環境打包用的 Maven repository，請參考 `doc/java-gradle-offline-build.md`。
 
 ## 3. 查看可用命令
 
 ```bash
-java -jar target/fsap-monitor-util-0.1.0-SNAPSHOT.jar --help
+java -jar build/libs/fsap-monitor-util-0.1.0-SNAPSHOT.jar --help
 ```
 
 目前可用命令：
@@ -64,7 +66,7 @@ java -jar target/fsap-monitor-util-0.1.0-SNAPSHOT.jar --help
 ### Step 1. 檢查環境
 
 ```bash
-java -jar target/fsap-monitor-util-0.1.0-SNAPSHOT.jar \
+java -jar build/libs/fsap-monitor-util-0.1.0-SNAPSHOT.jar \
   --fsap.paths.base-dir=fsap-month-report-develop \
   doctor
 ```
@@ -80,7 +82,7 @@ java -jar target/fsap-monitor-util-0.1.0-SNAPSHOT.jar \
 ### Step 2. 將 Excel 匯入 Source Lake
 
 ```bash
-java -jar target/fsap-monitor-util-0.1.0-SNAPSHOT.jar \
+java -jar build/libs/fsap-monitor-util-0.1.0-SNAPSHOT.jar \
   --fsap.paths.base-dir=fsap-month-report-develop \
   ingest
 ```
@@ -95,7 +97,7 @@ java -jar target/fsap-monitor-util-0.1.0-SNAPSHOT.jar \
 只處理單一天：
 
 ```bash
-java -jar target/fsap-monitor-util-0.1.0-SNAPSHOT.jar \
+java -jar build/libs/fsap-monitor-util-0.1.0-SNAPSHOT.jar \
   --fsap.paths.base-dir=fsap-month-report-develop \
   ingest --date 20260421
 ```
@@ -103,7 +105,7 @@ java -jar target/fsap-monitor-util-0.1.0-SNAPSHOT.jar \
 強制重建：
 
 ```bash
-java -jar target/fsap-monitor-util-0.1.0-SNAPSHOT.jar \
+java -jar build/libs/fsap-monitor-util-0.1.0-SNAPSHOT.jar \
   --fsap.paths.base-dir=fsap-month-report-develop \
   ingest --force
 ```
@@ -111,7 +113,7 @@ java -jar target/fsap-monitor-util-0.1.0-SNAPSHOT.jar \
 只處理最新 N 個檔案：
 
 ```bash
-java -jar target/fsap-monitor-util-0.1.0-SNAPSHOT.jar \
+java -jar build/libs/fsap-monitor-util-0.1.0-SNAPSHOT.jar \
   --fsap.paths.base-dir=fsap-month-report-develop \
   ingest --limit 3
 ```
@@ -119,7 +121,7 @@ java -jar target/fsap-monitor-util-0.1.0-SNAPSHOT.jar \
 ### Step 3. 同步 SQL Views 到 DuckDB
 
 ```bash
-java -jar target/fsap-monitor-util-0.1.0-SNAPSHOT.jar \
+java -jar build/libs/fsap-monitor-util-0.1.0-SNAPSHOT.jar \
   --fsap.paths.base-dir=fsap-month-report-develop \
   sync-views
 ```
@@ -133,7 +135,7 @@ java -jar target/fsap-monitor-util-0.1.0-SNAPSHOT.jar \
 可選參數：
 
 ```bash
-java -jar target/fsap-monitor-util-0.1.0-SNAPSHOT.jar \
+java -jar build/libs/fsap-monitor-util-0.1.0-SNAPSHOT.jar \
   --fsap.paths.base-dir=fsap-month-report-develop \
   sync-views --max-rounds 5
 ```
@@ -141,7 +143,7 @@ java -jar target/fsap-monitor-util-0.1.0-SNAPSHOT.jar \
 ### Step 4. 產生月報表
 
 ```bash
-java -jar target/fsap-monitor-util-0.1.0-SNAPSHOT.jar \
+java -jar build/libs/fsap-monitor-util-0.1.0-SNAPSHOT.jar \
   --fsap.paths.base-dir=fsap-month-report-develop \
   generate-report
 ```
@@ -172,7 +174,7 @@ java -jar target/fsap-monitor-util-0.1.0-SNAPSHOT.jar \
 如果你要指定批次時間戳：
 
 ```bash
-java -jar target/fsap-monitor-util-0.1.0-SNAPSHOT.jar \
+java -jar build/libs/fsap-monitor-util-0.1.0-SNAPSHOT.jar \
   --fsap.paths.base-dir=fsap-month-report-develop \
   generate-report --timestamp 202604211930
 ```
@@ -180,7 +182,7 @@ java -jar target/fsap-monitor-util-0.1.0-SNAPSHOT.jar \
 如果你要允許單支 SQL 失敗時繼續跑剩餘報表：
 
 ```bash
-java -jar target/fsap-monitor-util-0.1.0-SNAPSHOT.jar \
+java -jar build/libs/fsap-monitor-util-0.1.0-SNAPSHOT.jar \
   --fsap.paths.base-dir=fsap-month-report-develop \
   generate-report --continue-on-error
 ```
@@ -190,7 +192,7 @@ java -jar target/fsap-monitor-util-0.1.0-SNAPSHOT.jar \
 如果除了報表外，還要產生 dashboard 用的監控資料：
 
 ```bash
-java -jar target/fsap-monitor-util-0.1.0-SNAPSHOT.jar \
+java -jar build/libs/fsap-monitor-util-0.1.0-SNAPSHOT.jar \
   --fsap.paths.base-dir=fsap-month-report-develop \
   update-monitor-data
 ```
@@ -221,7 +223,7 @@ java -jar target/fsap-monitor-util-0.1.0-SNAPSHOT.jar \
 如果你要指定其他 config：
 
 ```bash
-java -jar target/fsap-monitor-util-0.1.0-SNAPSHOT.jar \
+java -jar build/libs/fsap-monitor-util-0.1.0-SNAPSHOT.jar \
   --fsap.paths.base-dir=fsap-month-report-develop \
   update-monitor-data --config config/monitor-data.json
 ```
@@ -231,7 +233,7 @@ java -jar target/fsap-monitor-util-0.1.0-SNAPSHOT.jar \
 如果你要用 Java Web Dashboard 查詢資料或下載產物：
 
 ```bash
-java -jar target/fsap-monitor-util-0.1.0-SNAPSHOT.jar \
+java -jar build/libs/fsap-monitor-util-0.1.0-SNAPSHOT.jar \
   --fsap.paths.base-dir=fsap-month-report-develop \
   serve
 ```
@@ -253,7 +255,7 @@ java -jar target/fsap-monitor-util-0.1.0-SNAPSHOT.jar \
 如果要指定 port：
 
 ```bash
-java -jar target/fsap-monitor-util-0.1.0-SNAPSHOT.jar \
+java -jar build/libs/fsap-monitor-util-0.1.0-SNAPSHOT.jar \
   --fsap.paths.base-dir=fsap-month-report-develop \
   serve --port 18080
 ```
@@ -261,7 +263,7 @@ java -jar target/fsap-monitor-util-0.1.0-SNAPSHOT.jar \
 如果你要明確指定可操作模式：
 
 ```bash
-java -jar target/fsap-monitor-util-0.1.0-SNAPSHOT.jar \
+java -jar build/libs/fsap-monitor-util-0.1.0-SNAPSHOT.jar \
   --fsap.paths.base-dir=fsap-month-report-develop \
   serve --writable
 ```
@@ -269,7 +271,7 @@ java -jar target/fsap-monitor-util-0.1.0-SNAPSHOT.jar \
 如果你只想開查詢與下載，不允許從 UI 觸發任務：
 
 ```bash
-java -jar target/fsap-monitor-util-0.1.0-SNAPSHOT.jar \
+java -jar build/libs/fsap-monitor-util-0.1.0-SNAPSHOT.jar \
   --fsap.paths.base-dir=fsap-month-report-develop \
   serve --readonly
 ```
@@ -347,7 +349,7 @@ java -jar target/fsap-monitor-util-0.1.0-SNAPSHOT.jar \
 
 如果你是第一次驗證 Java 版，建議照這個順序：
 
-1. `mvn -DskipTests package`
+1. `./gradlew clean bootJar -x test`
 2. `doctor`
 3. `ingest`
 4. `sync-views`
@@ -402,21 +404,21 @@ logs/
 如果你只是要快速跑出 Java 版月報，可直接使用：
 
 ```bash
-mvn -DskipTests package
+./gradlew clean bootJar -x test
 
-java -jar target/fsap-monitor-util-0.1.0-SNAPSHOT.jar \
+java -jar build/libs/fsap-monitor-util-0.1.0-SNAPSHOT.jar \
   --fsap.paths.base-dir=fsap-month-report-develop \
   doctor
 
-java -jar target/fsap-monitor-util-0.1.0-SNAPSHOT.jar \
+java -jar build/libs/fsap-monitor-util-0.1.0-SNAPSHOT.jar \
   --fsap.paths.base-dir=fsap-month-report-develop \
   ingest
 
-java -jar target/fsap-monitor-util-0.1.0-SNAPSHOT.jar \
+java -jar build/libs/fsap-monitor-util-0.1.0-SNAPSHOT.jar \
   --fsap.paths.base-dir=fsap-month-report-develop \
   sync-views
 
-java -jar target/fsap-monitor-util-0.1.0-SNAPSHOT.jar \
+java -jar build/libs/fsap-monitor-util-0.1.0-SNAPSHOT.jar \
   --fsap.paths.base-dir=fsap-month-report-develop \
   generate-report
 ```
@@ -424,11 +426,11 @@ java -jar target/fsap-monitor-util-0.1.0-SNAPSHOT.jar \
 如果還要產生監控資料與啟動 web：
 
 ```bash
-java -jar target/fsap-monitor-util-0.1.0-SNAPSHOT.jar \
+java -jar build/libs/fsap-monitor-util-0.1.0-SNAPSHOT.jar \
   --fsap.paths.base-dir=fsap-month-report-develop \
   update-monitor-data
 
-java -jar target/fsap-monitor-util-0.1.0-SNAPSHOT.jar \
+java -jar build/libs/fsap-monitor-util-0.1.0-SNAPSHOT.jar \
   --fsap.paths.base-dir=fsap-month-report-develop \
   serve --port 18080
 ```

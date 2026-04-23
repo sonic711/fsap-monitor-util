@@ -1,5 +1,7 @@
 # FSAP Python -> Java 全面移植與離線部署實作問題清單
 
+> 狀態更新：v1.1 之後專案已改為 Gradle Wrapper 建置，`pom.xml` 已移除；離線部署改以 Gradle 產出的 Maven repository layout 搭配 `--offline -PofflineRepo=...` 建置。
+
 本文件整理目前專案中所有已識別的 Python 使用點，並將「全面改寫為 Java」與「可完整移植到離線環境」所需先釐清的實作問題彙整成一份 kickoff 清單。
 
 目標不是只列抽象風險，而是把後續真的會卡住設計、開發、測試、交付的決策點先攤開。
@@ -16,7 +18,7 @@
 | :--- | :--- |
 | 核心資料引擎 | **保留 DuckDB** |
 | Java 遷移原則 | 優先保留既有 SQL 資產，避免同時進行 SQL 引擎遷移 |
-| 後續設計 | Java 技術選型、模組切分、Maven 骨架文件皆已補齊 |
+| 後續設計 | Java 技術選型、模組切分、Gradle 建置與離線 Maven repository 文件皆已補齊 |
 
 這代表後續 Java 化應以「流程層重寫、資料引擎延用」為主軸，而不是重做整個資料平台。
 
@@ -59,7 +61,7 @@
   - `regexp_extract`
   - `string_split` / `UNNEST`
 - 報表邏輯大部分已經 SQL 化，因此 Java 移植不一定要重寫 SQL；但若不保留 DuckDB，成本會明顯放大。
-- 這份文件建立當下尚無 Java 專案骨架；目前此項已完成，repo 內已有 `pom.xml`、`src/main/java`、`src/main/resources` 等結構。
+- 這份文件建立當下尚無 Java 專案骨架；目前此項已完成，repo 內已有 `build.gradle`、Gradle Wrapper、`src/main/java`、`src/main/resources` 等結構。
 - 目前文件大量仍假設使用者會安裝 Python、建立 `.venv`、並在線上安裝套件，這與「離線可完整移植」的目標衝突。
 
 ---

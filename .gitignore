@@ -1,4 +1,7 @@
 target/
+build/
+.gradle/
+.gradle-online/
 .m2/
 .DS_Store
 .idea/

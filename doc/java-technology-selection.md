@@ -1,5 +1,7 @@
 # FSAP Java 技術選型建議
 
+> 狀態更新：v1.1 之後建置工具已由 Maven 改為 Gradle Wrapper。離線部署仍以 Maven repository layout 提供依賴來源，實際流程請參考 `doc/java-gradle-offline-build.md`。
+
 本文件基於以下已確認前提提出技術選型建議：
 
 - 目標是將專案中所有 Python 實作逐步改為 Java
