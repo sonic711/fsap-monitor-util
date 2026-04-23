@@ -4,6 +4,7 @@ import java.time.Duration;
 import java.time.LocalDateTime;
 import java.time.format.DateTimeFormatter;
 import java.util.ArrayList;
+import java.util.EnumMap;
 import java.util.List;
 import java.util.Objects;
 import java.util.concurrent.ExecutorService;
@@ -39,6 +40,8 @@ public class TaskExecutionService {
     private final AtomicLong sequence = new AtomicLong();
     private final Object lock = new Object();
     private final List<TaskRun> history = new ArrayList<>();
+    private final EnumMap<WorkflowStep, LocalDateTime> completedSteps = new EnumMap<>(WorkflowStep.class);
+    private final EnumMap<WorkflowStep, String> failedSteps = new EnumMap<>(WorkflowStep.class);
 
     private TaskRun runningTask;
 
@@ -69,13 +72,14 @@ public class TaskExecutionService {
                     .toList();
             return new TaskDashboard(
                     runningTask == null ? null : toSnapshot(runningTask),
-                    snapshots
+                    snapshots,
+                    buildWorkflowStatus()
             );
         }
     }
 
     public TaskSnapshot startDoctor() {
-        return submit("doctor", "Doctor", "Run environment health checks", () -> {
+        return submit(WorkflowStep.DOCTOR, "Run environment health checks", () -> {
             EnvironmentCheckService.DoctorReport report = environmentCheckService.runChecks();
             List<String> details = report.checks().stream()
                     .map(check -> "[%s] %s -> %s (%s)".formatted(
@@ -96,7 +100,7 @@ public class TaskExecutionService {
                 maxRounds == null ? null : "maxRounds=" + maxRounds,
                 "failFast=" + failFast
         );
-        return submit("sync-views", "Sync Views", parameters, () -> {
+        return submit(WorkflowStep.SYNC_VIEWS, parameters, () -> {
             ViewSyncService.ViewSyncResult result = viewSyncService.syncViews(maxRounds, failFast);
             List<String> details = new ArrayList<>();
             details.add("success=" + result.successCount());
@@ -115,7 +119,7 @@ public class TaskExecutionService {
                 limit == null ? null : "limit=" + limit,
                 date == null || date.isBlank() ? null : "date=" + date.trim()
         );
-        return submit("ingest", "Ingest", parameters, () -> {
+        return submit(WorkflowStep.INGEST, parameters, () -> {
             IngestService.IngestResult result = ingestService.ingest(force, limit, date);
             List<String> details = List.of(
                     "processed=" + result.processedFiles(),
@@ -137,7 +141,7 @@ public class TaskExecutionService {
                 timestamp == null || timestamp.isBlank() ? null : "timestamp=" + timestamp.trim(),
                 "continueOnError=" + continueOnError
         );
-        return submit("generate-report", "Generate Report", parameters, () -> {
+        return submit(WorkflowStep.GENERATE_REPORT, parameters, () -> {
             ReportGenerationService.ReportGenerationResult result = reportGenerationService.generate(timestamp, continueOnError);
             long successCount = result.reportResults().stream()
                     .filter(ReportGenerationService.ReportFileResult::success)
@@ -175,6 +179,23 @@ public class TaskExecutionService {
                 return TaskOutcome.failure("Monitor data export completed with failures", result.outputDirectory().toString(), details);
             }
             return TaskOutcome.success("Monitor data export completed", result.outputDirectory().toString(), details);
+        });
+    }
+
+    private TaskSnapshot submit(WorkflowStep workflowStep, String parameterSummary, TaskAction action) {
+        synchronized (lock) {
+            validateWorkflowExecution(workflowStep);
+        }
+        return submit(workflowStep.taskType, workflowStep.displayName, parameterSummary, () -> {
+            TaskOutcome outcome = action.run();
+            synchronized (lock) {
+                if (outcome.success) {
+                    markWorkflowSuccess(workflowStep);
+                } else {
+                    markWorkflowFailure(workflowStep, outcome.summary);
+                }
+            }
+            return outcome;
         });
     }
 
@@ -222,6 +243,114 @@ public class TaskExecutionService {
                 runningTask = null;
             }
         }
+    }
+
+    private void validateWorkflowExecution(WorkflowStep workflowStep) {
+        WorkflowStep prerequisite = workflowStep.prerequisite;
+        if (prerequisite == null) {
+            return;
+        }
+        if (!completedSteps.containsKey(prerequisite)) {
+            throw new IllegalStateException("Workflow order required: run " + prerequisite.displayName + " before " + workflowStep.displayName);
+        }
+    }
+
+    private void markWorkflowSuccess(WorkflowStep workflowStep) {
+        LocalDateTime now = LocalDateTime.now();
+        completedSteps.put(workflowStep, now);
+        failedSteps.remove(workflowStep);
+        switch (workflowStep) {
+            case DOCTOR -> {
+                completedSteps.remove(WorkflowStep.INGEST);
+                completedSteps.remove(WorkflowStep.SYNC_VIEWS);
+                completedSteps.remove(WorkflowStep.GENERATE_REPORT);
+                failedSteps.remove(WorkflowStep.INGEST);
+                failedSteps.remove(WorkflowStep.SYNC_VIEWS);
+                failedSteps.remove(WorkflowStep.GENERATE_REPORT);
+            }
+            case INGEST -> {
+                completedSteps.remove(WorkflowStep.SYNC_VIEWS);
+                completedSteps.remove(WorkflowStep.GENERATE_REPORT);
+                failedSteps.remove(WorkflowStep.SYNC_VIEWS);
+                failedSteps.remove(WorkflowStep.GENERATE_REPORT);
+            }
+            case SYNC_VIEWS -> {
+                completedSteps.remove(WorkflowStep.GENERATE_REPORT);
+                failedSteps.remove(WorkflowStep.GENERATE_REPORT);
+            }
+            case GENERATE_REPORT -> {
+                // Final workflow step, nothing downstream to reset.
+            }
+        }
+    }
+
+    private void markWorkflowFailure(WorkflowStep workflowStep, String summary) {
+        failedSteps.put(workflowStep, summary == null || summary.isBlank() ? "Task failed" : summary);
+    }
+
+    private WorkflowStatus buildWorkflowStatus() {
+        List<WorkflowStepView> steps = new ArrayList<>();
+        for (WorkflowStep workflowStep : WorkflowStep.values()) {
+            steps.add(toWorkflowStepView(workflowStep));
+        }
+        return new WorkflowStatus(steps);
+    }
+
+    private WorkflowStepView toWorkflowStepView(WorkflowStep workflowStep) {
+        if (runningTask != null && workflowStep.taskType.equals(runningTask.taskType)) {
+            return new WorkflowStepView(
+                    workflowStep.taskType,
+                    workflowStep.displayName,
+                    workflowStep.order,
+                    "RUNNING",
+                    "In progress",
+                    false
+            );
+        }
+
+        if (completedSteps.containsKey(workflowStep)) {
+            return new WorkflowStepView(
+                    workflowStep.taskType,
+                    workflowStep.displayName,
+                    workflowStep.order,
+                    "COMPLETED",
+                    "Completed at " + formatTime(completedSteps.get(workflowStep)),
+                    true
+            );
+        }
+
+        if (workflowStep.prerequisite != null && !completedSteps.containsKey(workflowStep.prerequisite)) {
+            return new WorkflowStepView(
+                    workflowStep.taskType,
+                    workflowStep.displayName,
+                    workflowStep.order,
+                    "LOCKED",
+                    "Requires " + workflowStep.prerequisite.displayName,
+                    false
+            );
+        }
+
+        String failureMessage = failedSteps.get(workflowStep);
+        if (failureMessage != null && !failureMessage.isBlank()) {
+            return new WorkflowStepView(
+                    workflowStep.taskType,
+                    workflowStep.displayName,
+                    workflowStep.order,
+                    "FAILED",
+                    failureMessage,
+                    true
+            );
+        }
+
+        String message = workflowStep.prerequisite == null ? "Start here" : "Ready";
+        return new WorkflowStepView(
+                workflowStep.taskType,
+                workflowStep.displayName,
+                workflowStep.order,
+                "READY",
+                message,
+                true
+        );
     }
 
     private void trimHistory() {
@@ -306,6 +435,25 @@ public class TaskExecutionService {
         FAILED
     }
 
+    private enum WorkflowStep {
+        DOCTOR(1, "doctor", "Doctor", null),
+        INGEST(2, "ingest", "Ingest", DOCTOR),
+        SYNC_VIEWS(3, "sync-views", "Sync Views", INGEST),
+        GENERATE_REPORT(4, "generate-report", "Generate Report", SYNC_VIEWS);
+
+        private final int order;
+        private final String taskType;
+        private final String displayName;
+        private final WorkflowStep prerequisite;
+
+        WorkflowStep(int order, String taskType, String displayName, WorkflowStep prerequisite) {
+            this.order = order;
+            this.taskType = taskType;
+            this.displayName = displayName;
+            this.prerequisite = prerequisite;
+        }
+    }
+
     private record TaskOutcome(boolean success, String summary, String outputPath, List<String> detailLines) {
 
         private static TaskOutcome success(String summary, String outputPath, List<String> detailLines) {
@@ -317,7 +465,18 @@ public class TaskExecutionService {
         }
     }
 
-    public record TaskDashboard(TaskSnapshot runningTask, List<TaskSnapshot> recentTasks) { }
+    public record TaskDashboard(TaskSnapshot runningTask, List<TaskSnapshot> recentTasks, WorkflowStatus workflowStatus) { }
+
+    public record WorkflowStatus(List<WorkflowStepView> steps) { }
+
+    public record WorkflowStepView(
+            String taskType,
+            String displayName,
+            int order,
+            String status,
+            String message,
+            boolean executable
+    ) { }
 
     public record TaskSnapshot(
             long id,

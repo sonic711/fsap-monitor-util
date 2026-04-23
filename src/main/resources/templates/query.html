@@ -99,6 +99,11 @@
             gap: 14px;
             grid-template-columns: repeat(2, minmax(0, 1fr));
         }
+        .workflow-grid {
+            display: grid;
+            gap: 14px;
+            grid-template-columns: repeat(2, minmax(0, 1fr));
+        }
         .stack {
             display: grid;
             gap: 18px;
@@ -199,6 +204,63 @@
             padding: 14px;
             background: rgba(255,255,255,0.74);
         }
+        .workflow-card {
+            border: 1px solid var(--line);
+            border-radius: 16px;
+            padding: 16px;
+            background: rgba(255,255,255,0.82);
+            position: relative;
+        }
+        .workflow-card.is-ready {
+            border-color: #b9d0c6;
+            box-shadow: inset 0 0 0 1px rgba(25, 77, 63, 0.08);
+        }
+        .workflow-card.is-completed {
+            background: #eff6eb;
+            border-color: #bdd1b2;
+        }
+        .workflow-card.is-running {
+            background: #e9f2ed;
+            border-color: #8eb5a5;
+        }
+        .workflow-card.is-locked {
+            background: rgba(246, 241, 233, 0.9);
+            opacity: 0.88;
+        }
+        .workflow-card.is-failed {
+            background: #fbefea;
+            border-color: #d8b2a6;
+        }
+        .step-index {
+            width: 34px;
+            height: 34px;
+            border-radius: 999px;
+            display: inline-flex;
+            align-items: center;
+            justify-content: center;
+            background: var(--accent);
+            color: #fff;
+            font-family: "SFMono-Regular", Menlo, monospace;
+            font-size: 0.9rem;
+            margin-bottom: 10px;
+        }
+        .workflow-meta {
+            display: flex;
+            justify-content: space-between;
+            gap: 12px;
+            align-items: center;
+            margin-bottom: 8px;
+        }
+        .workflow-meta h3 {
+            margin: 0;
+        }
+        .step-note {
+            min-height: 2.8em;
+            font-size: 0.88rem;
+            color: var(--muted);
+            line-height: 1.5;
+            margin-bottom: 10px;
+        }
         .task-card h3 {
             margin-bottom: 8px;
         }
@@ -255,6 +317,12 @@
             margin-top: 8px;
             min-height: 1.4em;
             font-size: 0.88rem;
+            color: var(--muted);
+        }
+        .workflow-feedback {
+            min-height: 1.4em;
+            margin: 10px 0 16px;
+            font-size: 0.9rem;
             color: var(--muted);
         }
         .mini-list {
@@ -350,10 +418,13 @@
             .task-grid {
                 grid-template-columns: 1fr;
             }
+            .workflow-grid {
+                grid-template-columns: 1fr;
+            }
         }
     </style>
 </head>
-<body>
+<body th:attr="data-readonly=${readonly}">
 <div class="shell">
     <section class="hero">
         <h1>FSAP Monitor Utility</h1>
@@ -374,38 +445,31 @@
             <div class="stack">
                 <article class="panel" id="operations">
                     <h2>Operations</h2>
-                    <p>這裡把原本要用 `java -jar ...` 執行的主線命令搬進 UI。任務以單一背景 worker 執行，避免同時改動同一份 DuckDB 與輸出目錄。</p>
+                    <p>這裡把原本要用 `java -jar ...` 執行的主線命令搬進 UI。主流程固定為 `Doctor -> Ingest -> Sync Views -> Generate Report`，UI 與後端都會一起鎖順序。</p>
                     <p th:if="${readonly}" class="error">目前為 readonly mode，任務按鈕已停用。啟動時可改用 `serve --writable` 或 `--fsap.web.readonly=false`。</p>
-                    <div class="task-grid">
-                        <section class="task-card">
-                            <h3>Doctor</h3>
+                    <div id="workflow-feedback" class="workflow-feedback">依序完成 1 到 4，系統會自動鎖住未到步驟。</div>
+                    <div class="workflow-grid">
+                        <section class="workflow-card" id="workflow-card-doctor">
+                            <div class="step-index">1</div>
+                            <div class="workflow-meta">
+                                <h3>Doctor</h3>
+                                <span class="status-badge" id="workflow-status-doctor">READY</span>
+                            </div>
                             <p>檢查目錄、log 與 DuckDB 是否可正常存取。</p>
+                            <div class="step-note" id="workflow-note-doctor">Start here</div>
                             <div class="actions">
-                                <button type="button" th:disabled="${readonly}" onclick="startDoctor()">Run Doctor</button>
+                                <button id="workflow-button-doctor" type="button" th:disabled="${readonly}" onclick="startDoctor()">Run Doctor</button>
                             </div>
                         </section>
 
-                        <section class="task-card">
-                            <h3>Sync Views</h3>
-                            <p>同步 `03_sql_logic/views` 到 DuckDB，已包含依賴排序與 retry。</p>
-                            <div class="form-grid">
-                                <label>
-                                    Max Rounds
-                                    <input id="sync-max-rounds" type="number" min="1" placeholder="default">
-                                </label>
-                                <label class="inline-check">
-                                    <input id="sync-fail-fast" type="checkbox">
-                                    Fail fast
-                                </label>
+                        <section class="workflow-card" id="workflow-card-ingest">
+                            <div class="step-index">2</div>
+                            <div class="workflow-meta">
+                                <h3>Ingest</h3>
+                                <span class="status-badge" id="workflow-status-ingest">LOCKED</span>
                             </div>
-                            <div class="actions">
-                                <button type="button" th:disabled="${readonly}" onclick="startSyncViews()">Run Sync Views</button>
-                            </div>
-                        </section>
-
-                        <section class="task-card">
-                            <h3>Ingest</h3>
                             <p>把 `01_excel_input/*.xlsx` 轉成 `02_source_lake/**/*.jsonl.gz`。</p>
+                            <div class="step-note" id="workflow-note-ingest">Requires Doctor</div>
                             <div class="form-grid">
                                 <label>
                                     Upload `.xlsx`
@@ -438,13 +502,41 @@
                             </div>
                             <div class="actions">
                                 <button type="button" class="ghost" th:disabled="${readonly}" onclick="uploadIngestFiles()">Upload Excel</button>
-                                <button type="button" th:disabled="${readonly}" onclick="startIngest()">Run Ingest</button>
+                                <button id="workflow-button-ingest" type="button" th:disabled="${readonly}" onclick="startIngest()">Run Ingest</button>
                             </div>
                         </section>
 
-                        <section class="task-card">
-                            <h3>Generate Report</h3>
+                        <section class="workflow-card" id="workflow-card-sync-views">
+                            <div class="step-index">3</div>
+                            <div class="workflow-meta">
+                                <h3>Sync Views</h3>
+                                <span class="status-badge" id="workflow-status-sync-views">LOCKED</span>
+                            </div>
+                            <p>同步 `03_sql_logic/views` 到 DuckDB，已包含依賴排序與 retry。</p>
+                            <div class="step-note" id="workflow-note-sync-views">Requires Ingest</div>
+                            <div class="form-grid">
+                                <label>
+                                    Max Rounds
+                                    <input id="sync-max-rounds" type="number" min="1" placeholder="default">
+                                </label>
+                                <label class="inline-check">
+                                    <input id="sync-fail-fast" type="checkbox">
+                                    Fail fast
+                                </label>
+                            </div>
+                            <div class="actions">
+                                <button id="workflow-button-sync-views" type="button" th:disabled="${readonly}" onclick="startSyncViews()">Run Sync Views</button>
+                            </div>
+                        </section>
+
+                        <section class="workflow-card" id="workflow-card-generate-report">
+                            <div class="step-index">4</div>
+                            <div class="workflow-meta">
+                                <h3>Generate Report</h3>
+                                <span class="status-badge" id="workflow-status-generate-report">LOCKED</span>
+                            </div>
                             <p>執行 `reports/*.sql`，輸出彙總 Excel 與各自 CSV。</p>
+                            <div class="step-note" id="workflow-note-generate-report">Requires Sync Views</div>
                             <div class="form-grid">
                                 <label>
                                     Timestamp
@@ -456,10 +548,15 @@
                                 </label>
                             </div>
                             <div class="actions">
-                                <button type="button" th:disabled="${readonly}" onclick="startGenerateReport()">Run Generate Report</button>
+                                <button id="workflow-button-generate-report" type="button" th:disabled="${readonly}" onclick="startGenerateReport()">Run Generate Report</button>
                             </div>
                         </section>
+                    </div>
 
+                    <div class="panel-head" style="margin-top:18px;">
+                        <h2>Additional Operation</h2>
+                    </div>
+                    <div class="task-grid">
                         <section class="task-card">
                             <h3>Update Monitor Data</h3>
                             <p>依 `config/monitor-data.json` 匯出 monitor data 的 `CSV + JS`。</p>
@@ -616,42 +713,65 @@ async function postTask(path, payload) {
     });
     const payloadJson = await response.json().catch(() => ({}));
     if (!response.ok) {
-        throw new Error(payloadJson.message || JSON.stringify(payloadJson));
+        const message = payloadJson.message || JSON.stringify(payloadJson);
+        setWorkflowFeedback("ERROR: " + message, true);
+        throw new Error(message);
     }
     await refreshTasks();
+    setWorkflowFeedback("Task queued: " + path.replace("/api/tasks/", ""));
     return payloadJson;
 }
 
 async function startDoctor() {
-    await postTask("/api/tasks/doctor", {});
+    try {
+        await postTask("/api/tasks/doctor", {});
+    } catch (error) {
+        // Feedback is already rendered in postTask.
+    }
 }
 
 async function startSyncViews() {
-    await postTask("/api/tasks/sync-views", {
-        maxRounds: parseOptionalInteger("sync-max-rounds"),
-        failFast: document.getElementById("sync-fail-fast").checked
-    });
+    try {
+        await postTask("/api/tasks/sync-views", {
+            maxRounds: parseOptionalInteger("sync-max-rounds"),
+            failFast: document.getElementById("sync-fail-fast").checked
+        });
+    } catch (error) {
+        // Feedback is already rendered in postTask.
+    }
 }
 
 async function startIngest() {
-    await postTask("/api/tasks/ingest", {
-        force: document.getElementById("ingest-force").checked,
-        limit: parseOptionalInteger("ingest-limit"),
-        date: trimToNull(document.getElementById("ingest-date").value)
-    });
+    try {
+        await postTask("/api/tasks/ingest", {
+            force: document.getElementById("ingest-force").checked,
+            limit: parseOptionalInteger("ingest-limit"),
+            date: trimToNull(document.getElementById("ingest-date").value)
+        });
+    } catch (error) {
+        // Feedback is already rendered in postTask.
+    }
 }
 
 async function startGenerateReport() {
-    await postTask("/api/tasks/generate-report", {
-        timestamp: trimToNull(document.getElementById("report-timestamp").value),
-        continueOnError: document.getElementById("report-continue").checked
-    });
+    try {
+        await postTask("/api/tasks/generate-report", {
+            timestamp: trimToNull(document.getElementById("report-timestamp").value),
+            continueOnError: document.getElementById("report-continue").checked
+        });
+    } catch (error) {
+        // Feedback is already rendered in postTask.
+    }
 }
 
 async function startUpdateMonitorData() {
-    await postTask("/api/tasks/update-monitor-data", {
-        configPath: trimToNull(document.getElementById("monitor-config").value)
-    });
+    try {
+        await postTask("/api/tasks/update-monitor-data", {
+            configPath: trimToNull(document.getElementById("monitor-config").value)
+        });
+    } catch (error) {
+        // Feedback is already rendered in postTask.
+    }
 }
 
 async function uploadIngestFiles() {
@@ -701,6 +821,56 @@ function statusClass(status) {
     if (status === "RUNNING") return "status-running";
     if (status === "SUCCESS") return "status-success";
     return "status-failed";
+}
+
+function workflowStatusClass(status) {
+    if (status === "RUNNING") return "status-running";
+    if (status === "COMPLETED") return "status-success";
+    if (status === "FAILED") return "status-failed";
+    return "";
+}
+
+function workflowCardClass(status) {
+    if (status === "RUNNING") return "is-running";
+    if (status === "COMPLETED") return "is-completed";
+    if (status === "FAILED") return "is-failed";
+    if (status === "READY") return "is-ready";
+    return "is-locked";
+}
+
+function setWorkflowFeedback(message, isError = false) {
+    const feedback = document.getElementById("workflow-feedback");
+    if (!feedback) return;
+    feedback.textContent = message;
+    feedback.classList.toggle("error", isError);
+}
+
+function renderWorkflow(workflowStatus) {
+    const steps = (workflowStatus && workflowStatus.steps) || [];
+    const stepMap = new Map(steps.map(step => [step.taskType, step]));
+    const taskTypes = ["doctor", "ingest", "sync-views", "generate-report"];
+    const readonlyMode = document.body.dataset.readonly === "true";
+    for (const taskType of taskTypes) {
+        const step = stepMap.get(taskType);
+        if (!step) continue;
+        const card = document.getElementById(`workflow-card-${taskType}`);
+        const badge = document.getElementById(`workflow-status-${taskType}`);
+        const note = document.getElementById(`workflow-note-${taskType}`);
+        const button = document.getElementById(`workflow-button-${taskType}`);
+        if (card) {
+            card.className = `workflow-card ${workflowCardClass(step.status)}`;
+        }
+        if (badge) {
+            badge.className = `status-badge ${workflowStatusClass(step.status)}`.trim();
+            badge.textContent = step.status;
+        }
+        if (note) {
+            note.textContent = step.message || "";
+        }
+        if (button) {
+            button.disabled = readonlyMode || !step.executable || step.status === "RUNNING";
+        }
+    }
 }
 
 function renderRunningTask(task) {
@@ -790,6 +960,7 @@ async function refreshTasks() {
         const payload = await response.json();
         renderRunningTask(payload.runningTask);
         renderTaskHistory(payload.recentTasks || []);
+        renderWorkflow(payload.workflowStatus);
     } catch (error) {
         console.error("Unable to refresh tasks", error);
     }

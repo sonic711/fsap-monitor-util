@@ -28,19 +28,40 @@
 2. API 主線：`/health`、`/api/query`、`/api/schema`
 3. Web Dashboard：首頁、查詢區、報表下載、監控資料下載、schema snapshot
 
-## v1.1 目標
+## v1.1 目前狀態
 
-`v1.1` 的主要目標是把目前需要 `java -jar ... <command>` 執行的操作，補成可由 UI 直接操作的任務頁。
+`v1.1` 的主目標是把原本需要 `java -jar ... <command>` 執行的主線操作，補成可由 Web UI 直接操作的任務頁。
 
-### v1.1 預計納入
+### v1.1 已完成
 
 - 在 Web UI 直接觸發 `doctor`
 - 在 Web UI 直接觸發 `sync-views`
 - 在 Web UI 直接觸發 `ingest`
 - 在 Web UI 直接觸發 `generate-report`
 - 在 Web UI 直接觸發 `update-monitor-data`
-- 顯示任務執行中 / 成功 / 失敗狀態
-- 顯示任務完成後的輸出路徑與最近批次結果
+- 顯示目前執行中的任務狀態
+- 顯示最近 UI 任務執行結果
+- 顯示任務完成後的輸出路徑摘要
+- 提供 `Ingest` 專用 `.xlsx` 上傳入口
+- 在 UI 顯示 `01_excel_input` 內目前的 `.xlsx` 檔案清單
+- 將頁面整理為兩個 tab：
+  - `Operations`
+  - `Query Console`
+- 將主流程整理為明確 4 步 workflow：
+  - `Doctor`
+  - `Ingest`
+  - `Sync Views`
+  - `Generate Report`
+- 在 UI 以步驟編號、狀態標示與鎖定狀態呈現 workflow
+- 在後端 API 直接鎖順序，避免跳步執行
+- `Recent Report Batches` 提供局部 refresh 按鈕，不必整頁重整
+
+### v1.1 尚未完全收斂
+
+- UI 任務歷史目前只存在記憶體，server 重啟後會清空
+- `Monitor Data Exports` 區塊目前仍偏向初始載入，尚未做與報表區相同層級的局部 refresh
+- `Task Status` 目前只顯示 output path 文字，尚未全面做成可點擊導向或直接下載
+- `Update Monitor Data` 目前不在這條主線 workflow 鎖定內，仍視為額外操作
 
 ### v1.1 不要求
 
@@ -99,7 +120,8 @@
 ## 結論
 
 目前 `v1.0` 的功能範圍已足以支撐核心 ETL、報表、查詢 API 與基礎 Web Dashboard。  
+`v1.1` 的 UI 任務操作頁也已經可用，後續剩餘工作主要是收斂互動細節與補強持久化。  
 後續版本的重點應明確收斂為：
 
-- `v1.1`：把 CLI 任務搬進 UI
+- `v1.1`：補齊任務頁收斂項目
 - `v1.2+`：補齊 Streamlit 等價互動體驗與周邊運維能力

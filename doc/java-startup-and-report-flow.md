@@ -2,7 +2,7 @@
 
 本文件說明目前 Java 版 `fsap-monitor-util` 的實際操作流程，從啟動、檢查環境，到最終產生報告與監控輸出。
 
-更新日期：2026-04-21
+更新日期：2026-04-22
 
 ## 1. 前置條件
 
@@ -236,6 +236,14 @@ java -jar target/fsap-monitor-util-0.1.0-SNAPSHOT.jar \
   serve
 ```
 
+目前 Web UI 預設為可操作模式，亦即可直接在頁面上執行：
+
+- `doctor`
+- `sync-views`
+- `ingest`
+- `generate-report`
+- `update-monitor-data`
+
 預設 port：
 
 ```bash
@@ -250,12 +258,90 @@ java -jar target/fsap-monitor-util-0.1.0-SNAPSHOT.jar \
   serve --port 18080
 ```
 
+如果你要明確指定可操作模式：
+
+```bash
+java -jar target/fsap-monitor-util-0.1.0-SNAPSHOT.jar \
+  --fsap.paths.base-dir=fsap-month-report-develop \
+  serve --writable
+```
+
+如果你只想開查詢與下載，不允許從 UI 觸發任務：
+
+```bash
+java -jar target/fsap-monitor-util-0.1.0-SNAPSHOT.jar \
+  --fsap.paths.base-dir=fsap-month-report-develop \
+  serve --readonly
+```
+
 啟動後可使用：
 
 - 首頁：`http://127.0.0.1:8080/`
 - 健康檢查：`http://127.0.0.1:8080/health`
 - 查詢 API：`POST http://127.0.0.1:8080/api/query`
 - Schema API：`GET http://127.0.0.1:8080/api/schema`
+
+### v1.1 Web UI 結構
+
+目前首頁已分成兩個 tab：
+
+1. `Operations`
+2. `Query Console`
+
+`Operations` 內包含：
+
+- `Operations` 任務操作區
+- `Recent Report Batches`
+- `Monitor Data Exports`
+- `Task Status`
+
+`Query Console` 內包含：
+
+- `SQL Query`
+- `Recent Query History`
+- `Schema Snapshot`
+
+### v1.1 UI 操作流程
+
+若你希望透過頁面完成匯入與報表流程，可依序操作：
+
+1. 進入 `Operations`
+2. 若有新的 Excel，先在 `Ingest` 區塊上傳 `.xlsx`
+3. 執行 `Doctor`
+4. 執行 `Ingest`
+5. 執行 `Sync Views`
+6. 執行 `Generate Report`
+7. 如需監控資料，再執行 `Update Monitor Data`
+
+### v1.1 Workflow 鎖定
+
+目前 UI 與後端 API 都會對主線任務套用正式順序：
+
+1. `Doctor`
+2. `Ingest`
+3. `Sync Views`
+4. `Generate Report`
+
+這代表：
+
+- UI 會以 4 步 workflow 卡片顯示順序
+- 尚未到的步驟會顯示 `LOCKED`
+- 即使直接呼叫 API，也不能跳步執行
+- 若重新成功執行前面的步驟，後面的步驟狀態會重新回到待執行
+
+例如：
+
+- 未完成 `Doctor` 前，不能執行 `Ingest`
+- 未完成 `Ingest` 前，不能執行 `Sync Views`
+- 未完成 `Sync Views` 前，不能執行 `Generate Report`
+
+補充：
+
+- `Ingest` 區塊會顯示目前 `01_excel_input` 內已有的 `.xlsx` 檔案
+- `Recent Report Batches` 已提供 `Refresh` 按鈕，可在產生報表後局部刷新
+- `Task Status` 會顯示最近由 UI 觸發的任務結果
+- UI 任務歷史目前只保留在記憶體中，若重啟服務會清空
+- `Update Monitor Data` 目前不在這條主線 workflow 內，視為額外操作
 
 ## 7. 建議實際操作順序
 
