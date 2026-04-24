@@ -4,6 +4,7 @@ import java.util.Arrays;
 import java.util.List;
 import java.util.Locale;
 
+import org.apache.poi.openxml4j.util.ZipSecureFile;
 import org.springframework.boot.SpringApplication;
 import org.springframework.boot.WebApplicationType;
 import org.springframework.boot.autoconfigure.SpringBootApplication;
@@ -15,6 +16,11 @@ public class FsapApplication {
 
     private static final List<String> ROOT_CLI_OPTIONS = List.of("-h", "--help", "-V", "--version");
     private static String[] cliArgs = new String[0];
+
+    static {
+        // Trust project-provided Excel files and disable POI zip bomb inflate ratio checks.
+        ZipSecureFile.setMinInflateRatio(0.0d);
+    }
 
     public static void main(String[] args) {
         ParsedArguments parsedArguments = splitArguments(args);
