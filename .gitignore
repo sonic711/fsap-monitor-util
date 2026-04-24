@@ -14,8 +14,27 @@ logs/
 05_database/
 
 # Legacy Python project and workshop assets
-fsap-month-report-develop/
 workshop/
+
+# Track only selected project skeleton paths under fsap-month-report-develop
+fsap-month-report-develop/*
+!fsap-month-report-develop/00_info/
+!fsap-month-report-develop/00_info/**
+!fsap-month-report-develop/03_sql_logic/
+!fsap-month-report-develop/03_sql_logic/**
+!fsap-month-report-develop/01_excel_input/
+fsap-month-report-develop/01_excel_input/*
+!fsap-month-report-develop/01_excel_input/README.md
+!fsap-month-report-develop/02_source_lake/
+fsap-month-report-develop/02_source_lake/*
+!fsap-month-report-develop/02_source_lake/README.md
+!fsap-month-report-develop/04_report_output/
+fsap-month-report-develop/04_report_output/*
+!fsap-month-report-develop/04_report_output/README.md
+!fsap-month-report-develop/05_database/
+fsap-month-report-develop/05_database/*
+!fsap-month-report-develop/05_database/README.md
+fsap-month-report-develop/**/.DS_Store
 
 # Generated / legacy docs
 doc/html/
