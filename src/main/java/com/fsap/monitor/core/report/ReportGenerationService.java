@@ -19,6 +19,8 @@ import java.util.Comparator;
 import java.util.HashSet;
 import java.util.List;
 import java.util.Set;
+import java.util.regex.Matcher;
+import java.util.regex.Pattern;
 import java.util.stream.Collectors;
 import java.util.stream.Stream;
 
@@ -44,6 +46,7 @@ public class ReportGenerationService {
     private static final DateTimeFormatter TIMESTAMP_FORMAT = DateTimeFormatter.ofPattern("yyyyMMddHHmm");
     private static final String REPORT_LOG_FILE = "report_execution.log";
     private static final String WORKBOOK_PREFIX = "維運月度報表_彙總_";
+    private static final Pattern REPORT_ORDER_PREFIX = Pattern.compile("^(\\d+(?:\\.\\d+)*)\\.?\\s*");
 
     private final ProjectPathService projectPathService;
     private final DuckDbConnectionFactory connectionFactory;
@@ -147,11 +150,46 @@ public class ReportGenerationService {
         try (Stream<Path> stream = Files.list(reportsDir)) {
             return stream
                     .filter(path -> path.getFileName().toString().endsWith(".sql"))
-                    .sorted(Comparator.comparing(path -> path.getFileName().toString()))
+                    .sorted(reportFileComparator())
                     .collect(Collectors.toList());
         } catch (Exception exception) {
             throw new IllegalStateException("Unable to scan reports directory: " + reportsDir, exception);
         }
+    }
+
+    private Comparator<Path> reportFileComparator() {
+        return (left, right) -> {
+            String leftName = stripSqlExtension(left.getFileName().toString());
+            String rightName = stripSqlExtension(right.getFileName().toString());
+
+            List<Integer> leftOrder = extractReportOrder(leftName);
+            List<Integer> rightOrder = extractReportOrder(rightName);
+
+            int segmentCount = Math.min(leftOrder.size(), rightOrder.size());
+            for (int index = 0; index < segmentCount; index++) {
+                int compare = Integer.compare(leftOrder.get(index), rightOrder.get(index));
+                if (compare != 0) {
+                    return compare;
+                }
+            }
+
+            if (!leftOrder.equals(rightOrder)) {
+                return Integer.compare(leftOrder.size(), rightOrder.size());
+            }
+
+            return leftName.compareTo(rightName);
+        };
+    }
+
+    private List<Integer> extractReportOrder(String fileName) {
+        Matcher matcher = REPORT_ORDER_PREFIX.matcher(fileName);
+        if (!matcher.find()) {
+            return List.of(Integer.MAX_VALUE);
+        }
+
+        return Stream.of(matcher.group(1).split("\\."))
+                .map(Integer::parseInt)
+                .collect(Collectors.toList());
     }
 
     private void loadMacros(Connection connection) {
