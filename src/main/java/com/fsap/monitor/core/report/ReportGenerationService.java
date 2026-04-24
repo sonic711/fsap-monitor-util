@@ -27,6 +27,8 @@ import java.util.stream.Stream;
 import org.apache.commons.csv.CSVFormat;
 import org.apache.commons.csv.CSVPrinter;
 import org.apache.poi.ss.usermodel.Cell;
+import org.apache.poi.ss.usermodel.CellStyle;
+import org.apache.poi.ss.usermodel.DataFormat;
 import org.apache.poi.ss.usermodel.Row;
 import org.apache.poi.ss.usermodel.Sheet;
 import org.apache.poi.ss.util.WorkbookUtil;
@@ -47,10 +49,14 @@ public class ReportGenerationService {
     private static final String REPORT_LOG_FILE = "report_execution.log";
     private static final String WORKBOOK_PREFIX = "維運月度報表_彙總_";
     private static final Pattern REPORT_ORDER_PREFIX = Pattern.compile("^(\\d+(?:\\.\\d+)*)\\.?\\s*");
+    private static final String INTEGER_NUMBER_FORMAT = "#,##0";
+    private static final String DECIMAL_NUMBER_FORMAT = "#,##0.############";
 
     private final ProjectPathService projectPathService;
     private final DuckDbConnectionFactory connectionFactory;
     private final ViewSyncService viewSyncService;
+    private CellStyle integerNumberCellStyle;
+    private CellStyle decimalNumberCellStyle;
 
     public ReportGenerationService(
             ProjectPathService projectPathService,
@@ -269,7 +275,7 @@ public class ReportGenerationService {
             Row row = sheet.createRow(rowIndex + 1);
             List<Object> values = table.rows().get(rowIndex);
             for (int columnIndex = 0; columnIndex < values.size(); columnIndex++) {
-                writeCellValue(row.createCell(columnIndex), values.get(columnIndex));
+                writeCellValue(workbook, row.createCell(columnIndex), values.get(columnIndex));
             }
         }
 
@@ -281,7 +287,7 @@ public class ReportGenerationService {
         writeWorkbookSheet(workbook, sheetName, errorTable);
     }
 
-    private void writeCellValue(Cell cell, Object value) {
+    private void writeCellValue(XSSFWorkbook workbook, Cell cell, Object value) {
         if (value == null) {
             cell.setBlank();
             return;
@@ -292,17 +298,45 @@ public class ReportGenerationService {
         }
         if (value instanceof BigInteger integerValue) {
             cell.setCellValue(integerValue.doubleValue());
+            cell.setCellStyle(integerNumberCellStyle(workbook));
             return;
         }
         if (value instanceof BigDecimal decimalValue) {
             cell.setCellValue(decimalValue.doubleValue());
+            cell.setCellStyle(decimalValue.scale() > 0 ? decimalNumberCellStyle(workbook) : integerNumberCellStyle(workbook));
             return;
         }
         if (value instanceof Number numberValue) {
             cell.setCellValue(numberValue.doubleValue());
+            cell.setCellStyle(isIntegralNumber(numberValue) ? integerNumberCellStyle(workbook) : decimalNumberCellStyle(workbook));
             return;
         }
         cell.setCellValue(value.toString());
+    }
+
+    private CellStyle integerNumberCellStyle(XSSFWorkbook workbook) {
+        if (integerNumberCellStyle == null) {
+            DataFormat dataFormat = workbook.createDataFormat();
+            integerNumberCellStyle = workbook.createCellStyle();
+            integerNumberCellStyle.setDataFormat(dataFormat.getFormat(INTEGER_NUMBER_FORMAT));
+        }
+        return integerNumberCellStyle;
+    }
+
+    private CellStyle decimalNumberCellStyle(XSSFWorkbook workbook) {
+        if (decimalNumberCellStyle == null) {
+            DataFormat dataFormat = workbook.createDataFormat();
+            decimalNumberCellStyle = workbook.createCellStyle();
+            decimalNumberCellStyle.setDataFormat(dataFormat.getFormat(DECIMAL_NUMBER_FORMAT));
+        }
+        return decimalNumberCellStyle;
+    }
+
+    private boolean isIntegralNumber(Number value) {
+        return value instanceof Byte
+                || value instanceof Short
+                || value instanceof Integer
+                || value instanceof Long;
     }
 
     private void writeCsv(Path csvPath, QueryTable table) throws Exception {
