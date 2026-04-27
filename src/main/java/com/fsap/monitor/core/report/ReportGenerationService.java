@@ -60,8 +60,6 @@ public class ReportGenerationService {
     private final ViewSyncService viewSyncService;
     private final ReportParameterDefaultsService reportParameterDefaultsService;
     private final ObjectMapper objectMapper;
-    private CellStyle integerNumberCellStyle;
-    private CellStyle decimalNumberCellStyle;
 
     public ReportGenerationService(
             ProjectPathService projectPathService,
@@ -110,6 +108,7 @@ public class ReportGenerationService {
         try (Connection connection = connectionFactory.openConnection();
              XSSFWorkbook workbook = new XSSFWorkbook()) {
             logExecution("✅ [資料庫] 已連接實體庫: " + projectPathService.databaseFile().getFileName());
+            WorkbookStyles workbookStyles = createWorkbookStyles(workbook);
 
             loadMacros(connection);
             syncViews(connection);
@@ -122,7 +121,7 @@ public class ReportGenerationService {
 
                 try {
                     QueryTable table = executeReportQuery(connection, reportFile, effectiveRequest);
-                    writeWorkbookSheet(workbook, sheetName, table);
+                    writeWorkbookSheet(workbook, workbookStyles, sheetName, table);
                     writeCsv(runDirectory.resolve(baseName + ".csv"), table);
                     reportResults.add(new ReportFileResult(baseName, table.rows().size(), true, null));
                     logExecution("  ✅ 完成 (" + table.rows().size() + " 筆)");
@@ -130,7 +129,7 @@ public class ReportGenerationService {
                     String errorMessage = reportFile.getFileName() + ": " + exception.getMessage();
                     failures.add(errorMessage);
                     reportResults.add(new ReportFileResult(baseName, 0, false, exception.getMessage()));
-                    writeErrorSheet(workbook, nextSheetName("ERR_" + baseName, usedSheetNames), exception.getMessage());
+                    writeErrorSheet(workbook, workbookStyles, nextSheetName("ERR_" + baseName, usedSheetNames), exception.getMessage());
                     logExecution("  ❌ 失敗: " + exception.getMessage());
                     if (!effectiveRequest.continueOnError()) {
                         fatalFailure = exception;
@@ -295,7 +294,7 @@ public class ReportGenerationService {
         return new QueryTable(headers, rows);
     }
 
-    private void writeWorkbookSheet(XSSFWorkbook workbook, String sheetName, QueryTable table) {
+    private void writeWorkbookSheet(XSSFWorkbook workbook, WorkbookStyles workbookStyles, String sheetName, QueryTable table) {
         Sheet sheet = workbook.createSheet(sheetName);
         Row headerRow = sheet.createRow(0);
         for (int index = 0; index < table.headers().size(); index++) {
@@ -306,19 +305,19 @@ public class ReportGenerationService {
             Row row = sheet.createRow(rowIndex + 1);
             List<Object> values = table.rows().get(rowIndex);
             for (int columnIndex = 0; columnIndex < values.size(); columnIndex++) {
-                writeCellValue(workbook, row.createCell(columnIndex), values.get(columnIndex));
+                writeCellValue(workbookStyles, row.createCell(columnIndex), values.get(columnIndex));
             }
         }
 
         adjustColumnWidths(sheet, table);
     }
 
-    private void writeErrorSheet(XSSFWorkbook workbook, String sheetName, String message) {
+    private void writeErrorSheet(XSSFWorkbook workbook, WorkbookStyles workbookStyles, String sheetName, String message) {
         QueryTable errorTable = new QueryTable(List.of("Error"), List.of(List.of(message)));
-        writeWorkbookSheet(workbook, sheetName, errorTable);
+        writeWorkbookSheet(workbook, workbookStyles, sheetName, errorTable);
     }
 
-    private void writeCellValue(XSSFWorkbook workbook, Cell cell, Object value) {
+    private void writeCellValue(WorkbookStyles workbookStyles, Cell cell, Object value) {
         if (value == null) {
             cell.setBlank();
             return;
@@ -329,38 +328,32 @@ public class ReportGenerationService {
         }
         if (value instanceof BigInteger integerValue) {
             cell.setCellValue(integerValue.doubleValue());
-            cell.setCellStyle(integerNumberCellStyle(workbook));
+            cell.setCellStyle(workbookStyles.integerNumberCellStyle());
             return;
         }
         if (value instanceof BigDecimal decimalValue) {
             cell.setCellValue(decimalValue.doubleValue());
-            cell.setCellStyle(decimalValue.scale() > 0 ? decimalNumberCellStyle(workbook) : integerNumberCellStyle(workbook));
+            cell.setCellStyle(decimalValue.scale() > 0 ? workbookStyles.decimalNumberCellStyle() : workbookStyles.integerNumberCellStyle());
             return;
         }
         if (value instanceof Number numberValue) {
             cell.setCellValue(numberValue.doubleValue());
-            cell.setCellStyle(isIntegralNumber(numberValue) ? integerNumberCellStyle(workbook) : decimalNumberCellStyle(workbook));
+            cell.setCellStyle(isIntegralNumber(numberValue) ? workbookStyles.integerNumberCellStyle() : workbookStyles.decimalNumberCellStyle());
             return;
         }
         cell.setCellValue(value.toString());
     }
 
-    private CellStyle integerNumberCellStyle(XSSFWorkbook workbook) {
-        if (integerNumberCellStyle == null) {
-            DataFormat dataFormat = workbook.createDataFormat();
-            integerNumberCellStyle = workbook.createCellStyle();
-            integerNumberCellStyle.setDataFormat(dataFormat.getFormat(INTEGER_NUMBER_FORMAT));
-        }
-        return integerNumberCellStyle;
-    }
+    private WorkbookStyles createWorkbookStyles(XSSFWorkbook workbook) {
+        DataFormat dataFormat = workbook.createDataFormat();
 
-    private CellStyle decimalNumberCellStyle(XSSFWorkbook workbook) {
-        if (decimalNumberCellStyle == null) {
-            DataFormat dataFormat = workbook.createDataFormat();
-            decimalNumberCellStyle = workbook.createCellStyle();
-            decimalNumberCellStyle.setDataFormat(dataFormat.getFormat(DECIMAL_NUMBER_FORMAT));
-        }
-        return decimalNumberCellStyle;
+        CellStyle integerStyle = workbook.createCellStyle();
+        integerStyle.setDataFormat(dataFormat.getFormat(INTEGER_NUMBER_FORMAT));
+
+        CellStyle decimalStyle = workbook.createCellStyle();
+        decimalStyle.setDataFormat(dataFormat.getFormat(DECIMAL_NUMBER_FORMAT));
+
+        return new WorkbookStyles(integerStyle, decimalStyle);
     }
 
     private boolean isIntegralNumber(Number value) {
@@ -451,6 +444,8 @@ public class ReportGenerationService {
     }
 
     private record QueryTable(List<String> headers, List<List<Object>> rows) { }
+
+    private record WorkbookStyles(CellStyle integerNumberCellStyle, CellStyle decimalNumberCellStyle) { }
 
     public record ReportGenerationResult(
             String timestamp,
