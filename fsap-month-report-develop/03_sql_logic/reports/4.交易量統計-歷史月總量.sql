@@ -1,7 +1,7 @@
 WITH params AS (
     SELECT
-        '2025-09' AS StartYM,   -- 往前推一個月作為基底
-        '2026-04' AS EndYM,
+        '${historyStartMonth}' AS StartYM,   -- 往前推一個月作為基底
+        '${historyEndMonth}' AS EndYM,
         'FAC2FAS' AS ExcludePrId -- 🌟 將排除清單也參數化
 ), 
 Exclude_PR_ID AS (
@@ -37,7 +37,7 @@ SELECT
     c."與上月比較差異(%)"
 FROM CalcDiff c
 CROSS JOIN params p
-WHERE c."年月" > p.StartYM   -- 動態過濾掉 StartYM (即 > '2025-09')
+WHERE c."年月" > p.StartYM   -- 動態過濾掉作為基底的起始月份
 ORDER BY c."年月";
 
 /***

@@ -11,8 +11,8 @@ FSAP-RUNTIME	FSAPRTTY2:fsap-runtime:10081	FSAP-RUNTIME	10.4.240.188
 WITH params AS (
     -- 定義參數，這裡可以根據需要修改日期範圍
     SELECT 
-        '2026-04-01' AS start_date,
-        '2026-04-30' AS end_date,
+        '${rangeStartDate}' AS start_date,
+        '${rangeEndDate}' AS end_date,
         'FSAP-RUNTIME' AS app_list -- 🌟 如果未來要根據 app_list 來過濾，可以在這裡修改應用程式清單
 ),
 AppList AS (

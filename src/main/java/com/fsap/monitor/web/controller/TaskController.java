@@ -72,8 +72,8 @@ public class TaskController {
     @PostMapping("/generate-report")
     public TaskExecutionService.TaskSnapshot startGenerateReport(@RequestBody(required = false) GenerateReportTaskRequest request) {
         ensureWritable();
-        GenerateReportTaskRequest resolved = request == null ? new GenerateReportTaskRequest(null, false) : request;
-        return launch(() -> taskExecutionService.startGenerateReport(resolved.timestamp(), resolved.continueOnError()));
+        GenerateReportTaskRequest resolved = request == null ? GenerateReportTaskRequest.empty() : request;
+        return launch(() -> taskExecutionService.startGenerateReport(resolved.toReportGenerationRequest()));
     }
 
     @PostMapping("/update-monitor-data")

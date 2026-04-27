@@ -1,8 +1,8 @@
 WITH params AS (
     -- 🌟 升級版控制台：支援精確到分鐘的任意區間
     SELECT 
-        '2026-04-01 00:00' AS StartTime,
-        '2026-04-30 23:59' AS EndTime,
+        '${rangeStartTime}' AS StartTime,
+        '${rangeEndTime}' AS EndTime,
         '' AS ExcludePrId,
         ''  AS TargetCategory -- 'update' 為交易類，'query' 為查詢類, '' 為全部
 ),

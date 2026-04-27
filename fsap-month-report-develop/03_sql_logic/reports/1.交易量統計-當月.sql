@@ -1,7 +1,7 @@
 WITH Config AS (
     -- 🌟 步驟 0：【參數控制台】未來換月或換系統，只要改這裡的 3 行就好！
     SELECT 
-        '2026-04' AS target_month,              -- 指定要查詢的年月
+        '${targetMonth}' AS target_month,       -- 指定要查詢的年月
         'FAC2FAS' AS exclude_pr_id,             -- 指定要排除的交易代碼
         '金融服務應用平台 FSAP' AS report_sys_name -- 報表上要顯示的系統名稱
 ),

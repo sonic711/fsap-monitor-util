@@ -1,6 +1,6 @@
 WITH params AS (
     SELECT 
-        '2026-04' AS TargetMonth,
+        '${targetMonth}' AS TargetMonth,
         'FAC2FAS' AS ExcludePrId,
         ''  AS TargetCategory -- 🌟 控制台：'update' 為交易類，'query' 為查詢類, '' 為全部
 ),

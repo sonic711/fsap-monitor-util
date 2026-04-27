@@ -1,7 +1,7 @@
 WITH params AS (
     SELECT
-        '2025-09' AS StartYM,    -- 往前推一個月作為基底 (產出 10月~2月 的報表)
-        '2026-04' AS EndYM,
+        '${historyStartMonth}' AS StartYM,    -- 往前推一個月作為基底
+        '${historyEndMonth}' AS EndYM,
         'FAC2FAS' AS ExcludePrId -- 排除清單
 ), 
 Exclude_PR_ID AS (
@@ -34,7 +34,7 @@ CalcDiff AS (
     FROM MonthlyVolume
 ),
 FilteredDiff AS (
-    -- 步驟 3：過濾掉沒有上月數據的基底月份 (2025-09)
+    -- 步驟 3：過濾掉沒有上月數據的基底月份
     SELECT c.*
     FROM CalcDiff c
     CROSS JOIN params p

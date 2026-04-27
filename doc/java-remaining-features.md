@@ -3,7 +3,7 @@
 本文件用來定義 Java 版目前可交付範圍，以及後續版本要補的功能。  
 它不再把所有未做項目都視為阻擋 release 的缺口，而是明確分成 `v1.0`、`v1.1`、`v1.2+`。
 
-更新日期：2026-04-23
+更新日期：2026-04-27
 
 ## 目前建置狀態
 
@@ -46,6 +46,16 @@
 - 在 Web UI 直接觸發 `ingest`
 - 在 Web UI 直接觸發 `generate-report`
 - 在 Web UI 直接觸發 `update-monitor-data`
+- 在 UI 與 CLI 共用 `Generate Report` 參數模型，可調整：
+  - `targetMonth`
+  - `rangeStartDate`
+  - `rangeEndDate`
+  - `rangeStartTime`
+  - `rangeEndTime`
+  - `historyStartMonth`
+  - `historyEndMonth`
+- `reports/*.sql` 已改為 placeholder render，不必再手改硬編碼月份 / 日期
+- 每次產出批次會保存 `report-params.json`
 - 顯示目前執行中的任務狀態
 - 顯示最近 UI 任務執行結果
 - 顯示任務完成後的輸出路徑摘要
@@ -123,6 +133,12 @@
 ### 9. 文件站建置流程整合
 
 - `scripts/build_docs.js` 的替代或整合策略
+
+### 10. 報表交易類別參數化
+
+- `7.x` / `8.x` 報表若要把 `TargetCategory` 也改成 UI/CLI 可控，仍需補白名單參數設計
+
+詳細設計與目前第一版狀態請參考 `doc/java-report-parameterization-plan.md`。
 
 ## 結論
 

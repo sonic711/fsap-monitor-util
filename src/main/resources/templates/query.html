@@ -542,11 +542,29 @@
                                     Timestamp
                                     <input id="report-timestamp" type="text" placeholder="YYYYMMDDHHMM">
                                 </label>
+                                <label>
+                                    Reporting Month
+                                    <input id="report-target-month" type="month" th:value="${reportDefaults.targetMonth}">
+                                </label>
+                                <label>
+                                    History Month Start
+                                    <input id="report-history-start-month" type="month" th:value="${reportDefaults.historyStartMonth}">
+                                </label>
+                                <label>
+                                    History Month End
+                                    <input id="report-history-end-month" type="month" th:value="${reportDefaults.historyEndMonth}">
+                                </label>
                                 <label class="inline-check">
                                     <input id="report-continue" type="checkbox">
                                     Continue on error
                                 </label>
                             </div>
+                            <p class="muted" id="report-derived-range">
+                                Auto date range: <span th:text="${reportDefaults.rangeStartDate}">2026-04-01</span> to
+                                <span th:text="${reportDefaults.rangeEndDate}">2026-04-30</span>,
+                                time range: <span th:text="${reportDefaults.rangeStartTime}">2026-04-01 00:00</span> to
+                                <span th:text="${reportDefaults.rangeEndTime}">2026-04-30 23:59</span>
+                            </p>
                             <div class="actions">
                                 <button id="workflow-button-generate-report" type="button" th:disabled="${readonly}" onclick="startGenerateReport()">Run Generate Report</button>
                             </div>
@@ -705,6 +723,29 @@ function parseOptionalInteger(elementId) {
     return value === null ? null : Number(value);
 }
 
+function formatDerivedReportRanges(monthValue) {
+    if (!monthValue || !/^\d{4}-\d{2}$/.test(monthValue)) {
+        return "Auto date range will be derived from Reporting Month.";
+    }
+    const [yearText, monthText] = monthValue.split("-");
+    const year = Number(yearText);
+    const month = Number(monthText);
+    const lastDay = new Date(year, month, 0).getDate();
+    const lastDayText = String(lastDay).padStart(2, "0");
+    return "Auto date range: "
+        + monthValue + "-01 to " + monthValue + "-" + lastDayText
+        + ", time range: "
+        + monthValue + "-01 00:00 to " + monthValue + "-" + lastDayText + " 23:59";
+}
+
+function refreshDerivedReportRanges() {
+    const targetMonth = trimToNull(document.getElementById("report-target-month")?.value);
+    const derivedRange = document.getElementById("report-derived-range");
+    if (derivedRange) {
+        derivedRange.textContent = formatDerivedReportRanges(targetMonth);
+    }
+}
+
 async function postTask(path, payload) {
     const response = await fetch(path, {
         method: "POST",
@@ -757,7 +798,10 @@ async function startGenerateReport() {
     try {
         await postTask("/api/tasks/generate-report", {
             timestamp: trimToNull(document.getElementById("report-timestamp").value),
-            continueOnError: document.getElementById("report-continue").checked
+            continueOnError: document.getElementById("report-continue").checked,
+            targetMonth: trimToNull(document.getElementById("report-target-month").value),
+            historyStartMonth: trimToNull(document.getElementById("report-history-start-month").value),
+            historyEndMonth: trimToNull(document.getElementById("report-history-end-month").value)
         });
     } catch (error) {
         // Feedback is already rendered in postTask.
@@ -1008,6 +1052,8 @@ async function runQuery() {
     }
 }
 
+document.getElementById("report-target-month")?.addEventListener("input", refreshDerivedReportRanges);
+refreshDerivedReportRanges();
 refreshTasks();
 refreshInputFiles();
 refreshReportBatches();

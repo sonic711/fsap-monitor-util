@@ -1,7 +1,7 @@
 WITH params AS (
     SELECT
-        '2025-09' AS StartYM,    -- 🌟 往前推一個月作為基底 (為了算出 10 月的差異)
-        '2026-04' AS EndYM,      -- 結算到 2026 年 2 月
+        '${historyStartMonth}' AS StartYM,    -- 🌟 往前推一個月作為基底
+        '${historyEndMonth}' AS EndYM,
         'FAC2FAS' AS ExcludePrId -- 排除清單
 ), 
 Exclude_PR_ID AS (

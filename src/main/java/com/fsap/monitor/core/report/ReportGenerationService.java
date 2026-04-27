@@ -37,6 +37,7 @@ import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 import org.springframework.stereotype.Service;
 
+import com.fasterxml.jackson.databind.ObjectMapper;
 import com.fsap.monitor.core.service.ProjectPathService;
 import com.fsap.monitor.core.viewsync.ViewSyncService;
 import com.fsap.monitor.infra.duckdb.DuckDbConnectionFactory;
@@ -47,34 +48,44 @@ public class ReportGenerationService {
     private static final Logger LOGGER = LoggerFactory.getLogger(ReportGenerationService.class);
     private static final DateTimeFormatter TIMESTAMP_FORMAT = DateTimeFormatter.ofPattern("yyyyMMddHHmm");
     private static final String REPORT_LOG_FILE = "report_execution.log";
+    private static final String REPORT_PARAMS_FILE = "report-params.json";
     private static final String WORKBOOK_PREFIX = "維運月度報表_彙總_";
     private static final Pattern REPORT_ORDER_PREFIX = Pattern.compile("^(\\d+(?:\\.\\d+)*)\\.?\\s*");
+    private static final Pattern REPORT_PARAMETER_PATTERN = Pattern.compile("\\$\\{([a-zA-Z][a-zA-Z0-9]*)}");
     private static final String INTEGER_NUMBER_FORMAT = "#,##0";
     private static final String DECIMAL_NUMBER_FORMAT = "#,##0.############";
 
     private final ProjectPathService projectPathService;
     private final DuckDbConnectionFactory connectionFactory;
     private final ViewSyncService viewSyncService;
+    private final ReportParameterDefaultsService reportParameterDefaultsService;
+    private final ObjectMapper objectMapper;
     private CellStyle integerNumberCellStyle;
     private CellStyle decimalNumberCellStyle;
 
     public ReportGenerationService(
             ProjectPathService projectPathService,
             DuckDbConnectionFactory connectionFactory,
-            ViewSyncService viewSyncService
+            ViewSyncService viewSyncService,
+            ReportParameterDefaultsService reportParameterDefaultsService,
+            ObjectMapper objectMapper
     ) {
         this.projectPathService = projectPathService;
         this.connectionFactory = connectionFactory;
         this.viewSyncService = viewSyncService;
+        this.reportParameterDefaultsService = reportParameterDefaultsService;
+        this.objectMapper = objectMapper;
     }
 
-    public ReportGenerationResult generate(String timestampOverride, boolean continueOnError) {
-        String timestamp = timestampOverride != null && !timestampOverride.isBlank()
-                ? timestampOverride.trim()
+    public ReportGenerationResult generate(ReportGenerationRequest request) {
+        ReportGenerationRequest effectiveRequest = reportParameterDefaultsService.resolve(request);
+        String timestamp = effectiveRequest.timestamp() != null
+                ? effectiveRequest.timestamp()
                 : LocalDateTime.now().format(TIMESTAMP_FORMAT);
 
         Path runDirectory = projectPathService.reportOutputDir().resolve(timestamp);
         Path workbookPath = runDirectory.resolve(WORKBOOK_PREFIX + timestamp + ".xlsx");
+        Path parametersFile = runDirectory.resolve(REPORT_PARAMS_FILE);
 
         try {
             Files.createDirectories(projectPathService.reportOutputDir());
@@ -87,11 +98,14 @@ public class ReportGenerationService {
         logExecution("=== FSAP 報表 Step 2 啟動 ===");
         logExecution("Base directory: " + projectPathService.baseDir());
         logExecution("Run directory: " + runDirectory);
+        logExecution("Report parameters: " + String.join(", ", effectiveRequest.summaryParts()));
 
         List<Path> reportFiles = scanReportFiles();
         List<String> failures = new ArrayList<>();
         List<ReportFileResult> reportResults = new ArrayList<>();
         Throwable fatalFailure = null;
+
+        writeParametersFile(parametersFile, effectiveRequest);
 
         try (Connection connection = connectionFactory.openConnection();
              XSSFWorkbook workbook = new XSSFWorkbook()) {
@@ -107,7 +121,7 @@ public class ReportGenerationService {
                 logExecution("📝 [處理中] " + reportFile.getFileName());
 
                 try {
-                    QueryTable table = executeReportQuery(connection, reportFile);
+                    QueryTable table = executeReportQuery(connection, reportFile, effectiveRequest);
                     writeWorkbookSheet(workbook, sheetName, table);
                     writeCsv(runDirectory.resolve(baseName + ".csv"), table);
                     reportResults.add(new ReportFileResult(baseName, table.rows().size(), true, null));
@@ -118,7 +132,7 @@ public class ReportGenerationService {
                     reportResults.add(new ReportFileResult(baseName, 0, false, exception.getMessage()));
                     writeErrorSheet(workbook, nextSheetName("ERR_" + baseName, usedSheetNames), exception.getMessage());
                     logExecution("  ❌ 失敗: " + exception.getMessage());
-                    if (!continueOnError) {
+                    if (!effectiveRequest.continueOnError()) {
                         fatalFailure = exception;
                         break;
                     }
@@ -144,7 +158,7 @@ public class ReportGenerationService {
             throw new IllegalStateException("Report generation completed with failures");
         }
 
-        return new ReportGenerationResult(timestamp, runDirectory, workbookPath, reportResults, failures);
+        return new ReportGenerationResult(timestamp, runDirectory, workbookPath, parametersFile, effectiveRequest, reportResults, failures);
     }
 
     private List<Path> scanReportFiles() {
@@ -232,8 +246,10 @@ public class ReportGenerationService {
         }
     }
 
-    private QueryTable executeReportQuery(Connection connection, Path reportFile) throws Exception {
-        String sql = projectPathService.rewriteProjectRelativePaths(Files.readString(reportFile));
+    private QueryTable executeReportQuery(Connection connection, Path reportFile, ReportGenerationRequest request) throws Exception {
+        String sql = Files.readString(reportFile);
+        sql = renderReportParameters(sql, request);
+        sql = projectPathService.rewriteProjectRelativePaths(sql);
         try (Statement statement = connection.createStatement()) {
             boolean hasResultSet = statement.execute(sql);
             if (!hasResultSet) {
@@ -244,6 +260,21 @@ public class ReportGenerationService {
                 return readResultSet(resultSet);
             }
         }
+    }
+
+    private String renderReportParameters(String sql, ReportGenerationRequest request) {
+        Matcher matcher = REPORT_PARAMETER_PATTERN.matcher(sql);
+        StringBuffer buffer = new StringBuffer();
+        while (matcher.find()) {
+            String parameterName = matcher.group(1);
+            String value = request.templateParameters().get(parameterName);
+            if (value == null) {
+                throw new IllegalStateException("Unknown or unresolved report parameter: " + parameterName);
+            }
+            matcher.appendReplacement(buffer, Matcher.quoteReplacement(value));
+        }
+        matcher.appendTail(buffer);
+        return buffer.toString();
     }
 
     private QueryTable readResultSet(ResultSet resultSet) throws Exception {
@@ -388,6 +419,20 @@ public class ReportGenerationService {
         return reportResults.stream().filter(ReportFileResult::success).count();
     }
 
+    private void writeParametersFile(Path parametersFile, ReportGenerationRequest request) {
+        try {
+            Files.writeString(
+                    parametersFile,
+                    objectMapper.writerWithDefaultPrettyPrinter().writeValueAsString(request),
+                    StandardCharsets.UTF_8,
+                    StandardOpenOption.CREATE,
+                    StandardOpenOption.TRUNCATE_EXISTING
+            );
+        } catch (Exception exception) {
+            throw new IllegalStateException("Unable to write report parameter file: " + parametersFile, exception);
+        }
+    }
+
     private void logExecution(String message) {
         LOGGER.info(message);
         Path logFile = projectPathService.logDir().resolve(REPORT_LOG_FILE);
@@ -411,6 +456,8 @@ public class ReportGenerationService {
             String timestamp,
             Path runDirectory,
             Path workbookPath,
+            Path parametersFile,
+            ReportGenerationRequest effectiveRequest,
             List<ReportFileResult> reportResults,
             List<String> failures
     ) { }

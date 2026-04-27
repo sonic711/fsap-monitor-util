@@ -6,6 +6,7 @@ import org.springframework.web.bind.annotation.GetMapping;
 
 import com.fsap.monitor.core.artifact.ArtifactBrowseService;
 import com.fsap.monitor.core.query.QueryHistoryService;
+import com.fsap.monitor.core.report.ReportParameterDefaultsService;
 import com.fsap.monitor.core.query.SchemaBrowseService;
 import com.fsap.monitor.core.service.ProjectPathService;
 import com.fsap.monitor.core.task.TaskExecutionService;
@@ -20,6 +21,7 @@ public class PageController {
     private final QueryHistoryService queryHistoryService;
     private final SchemaBrowseService schemaBrowseService;
     private final TaskExecutionService taskExecutionService;
+    private final ReportParameterDefaultsService reportParameterDefaultsService;
 
     public PageController(
             ProjectPathService projectPathService,
@@ -27,7 +29,8 @@ public class PageController {
             ArtifactBrowseService artifactBrowseService,
             QueryHistoryService queryHistoryService,
             SchemaBrowseService schemaBrowseService,
-            TaskExecutionService taskExecutionService
+            TaskExecutionService taskExecutionService,
+            ReportParameterDefaultsService reportParameterDefaultsService
     ) {
         this.projectPathService = projectPathService;
         this.properties = properties;
@@ -35,6 +38,7 @@ public class PageController {
         this.queryHistoryService = queryHistoryService;
         this.schemaBrowseService = schemaBrowseService;
         this.taskExecutionService = taskExecutionService;
+        this.reportParameterDefaultsService = reportParameterDefaultsService;
     }
 
     @GetMapping("/")
@@ -47,6 +51,7 @@ public class PageController {
         model.addAttribute("recentQueries", queryHistoryService.loadRecent(10));
         model.addAttribute("recentReportBatches", artifactBrowseService.loadRecentReportBatches(3));
         model.addAttribute("monitorFiles", artifactBrowseService.loadMonitorDataFiles());
+        model.addAttribute("reportDefaults", reportParameterDefaultsService.defaultRequest());
         try {
             model.addAttribute("schemaTables", schemaBrowseService.loadSchemaSnapshot());
         } catch (Exception exception) {

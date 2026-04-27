@@ -19,6 +19,7 @@ import org.springframework.stereotype.Service;
 
 import com.fsap.monitor.core.ingest.IngestService;
 import com.fsap.monitor.core.monitor.MonitorDataExportService;
+import com.fsap.monitor.core.report.ReportGenerationRequest;
 import com.fsap.monitor.core.report.ReportGenerationService;
 import com.fsap.monitor.core.service.EnvironmentCheckService;
 import com.fsap.monitor.core.service.EnvironmentCheckService.CheckResult;
@@ -136,18 +137,18 @@ public class TaskExecutionService {
         });
     }
 
-    public TaskSnapshot startGenerateReport(String timestamp, boolean continueOnError) {
-        String parameters = joinParameters(
-                timestamp == null || timestamp.isBlank() ? null : "timestamp=" + timestamp.trim(),
-                "continueOnError=" + continueOnError
-        );
+    public TaskSnapshot startGenerateReport(ReportGenerationRequest request) {
+        ReportGenerationRequest normalizedRequest = request == null ? ReportGenerationRequest.empty() : request.normalize();
+        String parameters = String.join(", ", normalizedRequest.summaryParts());
         return submit(WorkflowStep.GENERATE_REPORT, parameters, () -> {
-            ReportGenerationService.ReportGenerationResult result = reportGenerationService.generate(timestamp, continueOnError);
+            ReportGenerationService.ReportGenerationResult result = reportGenerationService.generate(normalizedRequest);
             long successCount = result.reportResults().stream()
                     .filter(ReportGenerationService.ReportFileResult::success)
                     .count();
             List<String> details = new ArrayList<>();
             details.add("timestamp=" + result.timestamp());
+            details.add("params=" + result.parametersFile());
+            details.addAll(result.effectiveRequest().summaryParts());
             details.add("success=" + successCount);
             details.add("failure=" + result.failures().size());
             result.reportResults().forEach(report -> details.add(
