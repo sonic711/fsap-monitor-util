@@ -149,13 +149,6 @@ public class IngestService {
         }
 
         String yyyymmdd = matcher.group(1);
-        if (!force && allOutputsExist(targetSheets, yyyymmdd)) {
-            logIngest("⏭️ [跳過] " + yyyymmdd + " (已存在)");
-            return new ProcessResult(false, true, 0, List.of());
-        }
-
-        logIngest("🚀 正在加工檔案: " + excelFile.getFileName() + " (日期: " + yyyymmdd + ")");
-
         int writtenFiles = 0;
         List<String> failures = new ArrayList<>();
         try (InputStream inputStream = Files.newInputStream(excelFile);
@@ -164,6 +157,22 @@ public class IngestService {
                     .limit(workbook.getNumberOfSheets())
                     .map(workbook::getSheetName)
                     .collect(Collectors.toSet());
+
+            List<String> expectedSheets = targetSheets.stream()
+                    .filter(availableSheets::contains)
+                    .toList();
+
+            if (expectedSheets.isEmpty()) {
+                logIngest("⏭️ [跳過] " + yyyymmdd + " (無目標分頁)");
+                return new ProcessResult(false, true, 0, List.of());
+            }
+
+            if (!force && allOutputsExist(expectedSheets, yyyymmdd)) {
+                logIngest("⏭️ [跳過] " + yyyymmdd + " (已存在)");
+                return new ProcessResult(false, true, 0, List.of());
+            }
+
+            logIngest("🚀 正在加工檔案: " + excelFile.getFileName() + " (日期: " + yyyymmdd + ")");
 
             for (String sheetName : targetSheets) {
                 if (!availableSheets.contains(sheetName)) {
