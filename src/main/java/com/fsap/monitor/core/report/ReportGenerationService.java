@@ -11,6 +11,7 @@ import java.nio.file.StandardOpenOption;
 import java.sql.Connection;
 import java.sql.ResultSet;
 import java.sql.ResultSetMetaData;
+import java.sql.SQLException;
 import java.sql.Statement;
 import java.time.LocalDateTime;
 import java.time.format.DateTimeFormatter;
@@ -49,6 +50,7 @@ public class ReportGenerationService {
     private static final DateTimeFormatter TIMESTAMP_FORMAT = DateTimeFormatter.ofPattern("yyyyMMddHHmm");
     private static final String REPORT_LOG_FILE = "report_execution.log";
     private static final String REPORT_PARAMS_FILE = "report-params.json";
+    private static final String NO_DATA_MESSAGE_HEADER = "Message";
     private static final String WORKBOOK_PREFIX = "維運月度報表_彙總_";
     private static final Pattern REPORT_ORDER_PREFIX = Pattern.compile("^(\\d+(?:\\.\\d+)*)\\.?\\s*");
     private static final Pattern REPORT_PARAMETER_PATTERN = Pattern.compile("\\$\\{([a-zA-Z][a-zA-Z0-9]*)}");
@@ -250,13 +252,21 @@ public class ReportGenerationService {
         sql = renderReportParameters(sql, request);
         sql = projectPathService.rewriteProjectRelativePaths(sql);
         try (Statement statement = connection.createStatement()) {
-            boolean hasResultSet = statement.execute(sql);
-            if (!hasResultSet) {
-                throw new IllegalStateException("SQL did not return a result set");
-            }
+            try {
+                boolean hasResultSet = statement.execute(sql);
+                if (!hasResultSet) {
+                    throw new IllegalStateException("SQL did not return a result set");
+                }
 
-            try (ResultSet resultSet = statement.getResultSet()) {
-                return readResultSet(resultSet);
+                try (ResultSet resultSet = statement.getResultSet()) {
+                    return readResultSet(resultSet);
+                }
+            } catch (SQLException exception) {
+                if (looksLikePivotSql(sql) && isEmptyProjectionBinderError(exception)) {
+                    logExecution("  ℹ️ 無資料可供動態 PIVOT 展開，改輸出提示頁: " + reportFile.getFileName());
+                    return noDataTable(reportFile);
+                }
+                throw exception;
             }
         }
     }
@@ -410,6 +420,25 @@ public class ReportGenerationService {
 
     private long successCount(List<ReportFileResult> reportResults) {
         return reportResults.stream().filter(ReportFileResult::success).count();
+    }
+
+    private boolean looksLikePivotSql(String sql) {
+        return sql.toUpperCase().contains("PIVOT");
+    }
+
+    private boolean isEmptyProjectionBinderError(SQLException exception) {
+        String message = exception.getMessage();
+        if (message == null) {
+            return false;
+        }
+        return message.contains("SELECT list is empty after resolving * expressions!");
+    }
+
+    private QueryTable noDataTable(Path reportFile) {
+        return new QueryTable(
+                List.of(NO_DATA_MESSAGE_HEADER),
+                List.of(List.of("No data for report " + stripSqlExtension(reportFile.getFileName().toString()) + " under current parameters"))
+        );
     }
 
     private void writeParametersFile(Path parametersFile, ReportGenerationRequest request) {
