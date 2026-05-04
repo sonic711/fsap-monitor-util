@@ -3,18 +3,18 @@ WITH params AS (
         '${historyStartMonth}' AS StartYM,    -- 往前推一個月作為基底
         '${historyEndMonth}' AS EndYM,
         'FAC2FAS' AS ExcludePrId -- 排除清單
-), 
+),
 Exclude_PR_ID AS (
     -- 讀取參數並將字串轉換為排除清單
     SELECT UNNEST(string_split(p.ExcludePrId, ',')) AS PR_ID
     FROM params p
-), 
+),
 MonthlyVolume AS (
     -- 步驟 1：計算每個月的總交易量
-    SELECT 
+    SELECT
         t.tx_yyyymm AS "年月",
-        SUM(t.tx_cnt) AS "月總交易量"
-    FROM v_rt_pr_hh24_clean t
+        SUM(t.total_cnt) AS "月總交易量"
+    FROM v_rt_cnt_clean t
     CROSS JOIN params p
     WHERE (1 = 1)
       AND t.tx_yyyymm BETWEEN p.StartYM AND p.EndYM
@@ -23,18 +23,18 @@ MonthlyVolume AS (
 ),
 CalcDiff AS (
     -- 步驟 2：利用 LAG() 算出「差額」與「差異百分比」
-    SELECT 
+    SELECT
         "年月",
         "月總交易量",
         -- 差額 (本月 - 上月)
         ("月總交易量" - LAG("月總交易量") OVER (ORDER BY "年月")) AS "與上月比較差異",
         -- 差異百分比
-        ROUND(("月總交易量" - LAG("月總交易量") OVER (ORDER BY "年月")) * 100.0 / 
+        ROUND(("月總交易量" - LAG("月總交易量") OVER (ORDER BY "年月")) * 100.0 /
         NULLIF(LAG("月總交易量") OVER (ORDER BY "年月"), 0), 2) AS "差異百分比"
     FROM MonthlyVolume
 ),
 FilteredDiff AS (
-    -- 步驟 3：過濾掉沒有上月數據的基底月份
+    -- 步驟 3：過濾掉沒有上月數據的基底月份 (2025-09)
     SELECT c.*
     FROM CalcDiff c
     CROSS JOIN params p

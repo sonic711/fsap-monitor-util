@@ -1,5 +1,5 @@
 WITH params AS (
-    SELECT 
+    SELECT
         '${targetMonth}' AS TargetMonth,
         'FAC2FAS' AS ExcludePrId,
         'update'  AS TargetCategory -- 🌟 控制台：'update' 為交易類，'query' 為查詢類, '' 為全部
@@ -10,16 +10,16 @@ Exclude_PR_ID AS (
 ),
 BaseDaily AS (
     -- 步驟 1：每日彙整 (包含全系統，用來算總母數)
-    SELECT 
-        t.PR_ID,
-        t.tx_dt_str,
-        SUM(t.tx_cnt) AS daily_cnt,
-        SUM(t.avg_tm_ms * t.tx_cnt) / NULLIF(SUM(t.tx_cnt), 0) AS daily_avg_ms
-    FROM v_rt_pr_hh24_clean t
+    SELECT
+        c.PR_ID,
+        c.tx_dt_str,
+        c.total_cnt AS daily_cnt,
+        tm.avg_tm_ms AS daily_avg_ms
+    FROM v_rt_cnt_clean c
+    LEFT JOIN v_rt_tmspt_clean tm ON c.PR_ID = tm.PR_ID AND c.tx_dt_str = tm.tx_dt_str
     CROSS JOIN params p
-    WHERE t.tx_dt_str LIKE p.TargetMonth || '-%'
-      AND t.PR_ID NOT IN (SELECT PR_ID FROM Exclude_PR_ID)
-    GROUP BY t.PR_ID, t.tx_dt_str
+    WHERE c.tx_dt_str LIKE p.TargetMonth || '-%'
+      AND c.PR_ID NOT IN (SELECT PR_ID FROM Exclude_PR_ID)
 ),
 MonthlyTotal AS (
     -- 步驟 2：全系統總交易量 (佔比的分母，排除 FAC2FAS 但不分交易或查詢)
@@ -28,7 +28,7 @@ MonthlyTotal AS (
 ),
 SystemStats AS (
     -- 步驟 3：只針對目標分類 TargetCategory 計算全月數據
-    SELECT 
+    SELECT
         b.PR_ID,
         SUM(b.daily_cnt) AS sys_total_cnt,
         SUM(b.daily_avg_ms * b.daily_cnt) / NULLIF(SUM(b.daily_cnt), 0) AS sys_avg_ms
@@ -40,7 +40,7 @@ SystemStats AS (
 ),
 PeakDayStats AS (
     -- 步驟 4：找出每個 PR_ID 的峰日與峰值時間
-    SELECT 
+    SELECT
         PR_ID,
         tx_dt_str AS peak_dt,
         daily_avg_ms AS peak_avg_ms,
@@ -49,21 +49,21 @@ PeakDayStats AS (
 )
 
 -- 步驟 5：組合所有數據
-SELECT 
+SELECT
     m.PR_ID AS "交易類型",
     COALESCE(i.PR_NAME, '未定義名稱') AS "名稱", -- 🌟 自動從 v_pr_info 帶入中文名稱
     m.sys_total_cnt AS "交易總量",
     CAST(ROUND(m.sys_avg_ms, 0) AS INT) AS "平均處理時間",
-    
+
     -- 動態計算民國年並串接換行與處理時間
     CONCAT(
         CAST(CAST(SUBSTRING(p.peak_dt, 1, 4) AS INT) - 1911 AS VARCHAR), '/',
-        SUBSTRING(p.peak_dt, 6, 2), '/', 
-        SUBSTRING(p.peak_dt, 9, 2), 
-        CHR(10), 
+        SUBSTRING(p.peak_dt, 6, 2), '/',
+        SUBSTRING(p.peak_dt, 9, 2),
+        CHR(10),
         CAST(ROUND(p.peak_avg_ms, 0) AS INT)
     ) AS "峰值處理時間",
-    
+
     -- 自動計算佔比
     CONCAT(CAST(ROUND((m.sys_total_cnt * 100.0) / t.all_sys_total_cnt, 2) AS VARCHAR), '%') AS "交易量佔比"
 

@@ -3,18 +3,18 @@ WITH params AS (
         '${historyStartMonth}' AS StartYM,    -- 往前推一個月作為基底
         '${historyEndMonth}' AS EndYM,
         'FAC2FAS' AS ExcludePrId -- 排除清單
-), 
+),
 Exclude_PR_ID AS (
     SELECT UNNEST(string_split(p.ExcludePrId, ',')) AS PR_ID
     FROM params p
 ),
 DailyTotal AS (
     -- 步驟 1：算出指定區間內「每一天」的總交易量
-    SELECT 
+    SELECT
         t.tx_yyyymm AS "年月",
         t.tx_dt_str AS "交易日",
-        SUM(t.tx_cnt) AS "日總交易量"
-    FROM v_rt_pr_hh24_clean t
+        SUM(t.total_cnt) AS "日總交易量"
+    FROM v_rt_cnt_clean t
     CROSS JOIN params p
     WHERE (1 = 1)
       AND t.tx_yyyymm BETWEEN p.StartYM AND p.EndYM
@@ -23,7 +23,7 @@ DailyTotal AS (
 ),
 RankedDailyTotal AS (
     -- 步驟 2：利用 ROW_NUMBER() 找出「每個月」交易量排第 1 名的那一天
-    SELECT 
+    SELECT
         "年月",
         "交易日",
         "日總交易量",
@@ -32,7 +32,7 @@ RankedDailyTotal AS (
 ),
 MonthlyPeak AS (
     -- 步驟 3：只抓取每月排名第 1 的紀錄
-    SELECT 
+    SELECT
         "年月",
         "交易日" AS "單日峰值日期",
         "日總交易量" AS "單日峰值交易量"
@@ -41,16 +41,16 @@ MonthlyPeak AS (
 ),
 CalcDiff AS (
     -- 步驟 4：利用 LAG() 計算本月峰值與「上個月峰值」的差異百分比
-    SELECT 
+    SELECT
         "年月",
         "單日峰值日期",
         "單日峰值交易量",
-        ROUND(("單日峰值交易量" - LAG("單日峰值交易量") OVER (ORDER BY "年月")) * 100.0 / 
+        ROUND(("單日峰值交易量" - LAG("單日峰值交易量") OVER (ORDER BY "年月")) * 100.0 /
         NULLIF(LAG("單日峰值交易量") OVER (ORDER BY "年月"), 0), 2) AS "差異百分比"
     FROM MonthlyPeak
 ),
 FilteredDiff AS (
-    -- 步驟 5：過濾掉用來當作基底的月份
+    -- 步驟 5：過濾掉用來當作基底的月份 (2025-09)
     SELECT c.*
     FROM CalcDiff c
     CROSS JOIN params p
@@ -75,7 +75,7 @@ ORDER BY "項目";
 /***
 WITH DailyTotal AS (
     -- 步驟 1：先算出歷史以來「每一天」的總交易量 (排除 FAC2FAS)
-    SELECT 
+    SELECT
         tx_yyyymm AS "年月",
         tx_dt_str AS "交易日",
         SUM(total_cnt) AS "日總交易量"
@@ -86,7 +86,7 @@ AND tx_yyyymm BETWEEN '2025-10' AND '2026-02'
 ),
 RankedDailyTotal AS (
     -- 步驟 2：利用 ROW_NUMBER() 找出「每個月」交易量排第 1 名的那一天
-    SELECT 
+    SELECT
         "年月",
         "交易日",
         "日總交易量",
@@ -95,7 +95,7 @@ RankedDailyTotal AS (
 )
 
 -- 步驟 3：只抓取每月排名第 1 的紀錄，並依照時間先後排序畫圖
-SELECT 
+SELECT
     "年月",
     "交易日" AS "單日峰值日期",
     "日總交易量" AS "單日峰值交易量"
