@@ -8,6 +8,9 @@ import picocli.CommandLine.Command;
 import picocli.CommandLine.Option;
 
 @Component
+/**
+ * 重新建立 DuckDB views 的 CLI 入口。
+ */
 @Command(name = "sync-views", mixinStandardHelpOptions = true, description = "Load SQL views into DuckDB")
 public class SyncViewsCommand implements Runnable {
 

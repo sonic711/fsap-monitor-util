@@ -25,6 +25,12 @@ import com.fsap.monitor.infra.config.FsapProperties;
 import com.fsap.monitor.infra.duckdb.DuckDbConnectionFactory;
 
 @Service
+/**
+ * 從指定 DuckDB views 匯出 monitor 用的 CSV / JS 產物。
+ *
+ * <p>這條流程和主報表 Excel 產生路徑分開，目標是輸出較輕量、可直接被既有
+ * monitor dashboard 消費的檔案。
+ */
 public class MonitorDataExportService {
 
     private final ObjectMapper objectMapper;
@@ -47,6 +53,10 @@ public class MonitorDataExportService {
         this.properties = properties;
     }
 
+    /**
+     * 載入 monitor 匯出設定、刷新 views、執行各任務，並把成對的 CSV / JS
+     * 輸出到指定目錄。
+     */
     public MonitorExportResult export(String configPathOverride) {
         Path configPath = resolveConfigPath(configPathOverride);
 
@@ -69,6 +79,8 @@ public class MonitorDataExportService {
             }
 
             for (MonitorTask task : config.tasks()) {
+                // 每個 task 都刻意獨立處理。task 可以選自己的 view 與輸出檔名，
+                // 但目前 SQL 模板仍只收斂在 daily / hourly 兩種型態。
                 String sql = generateSql(task.view(), task.type());
                 QueryTable table = executeQuery(connection, sql);
                 if (table.rows().isEmpty()) {
@@ -175,6 +187,8 @@ public class MonitorDataExportService {
         Path csvPath = outputDirectory.resolve(filename + ".csv");
         Path jsPath = outputDirectory.resolve(filename + ".js");
 
+        // CSV 會帶 UTF-8 BOM，因為這條產物路徑歷史上偏向 spreadsheet 使用情境，
+        // 帶 BOM 可以避免 Windows Excel 開啟時亂碼。
         Files.writeString(
                 csvPath,
                 "\uFEFF" + csvContent,
@@ -208,15 +222,27 @@ public class MonitorDataExportService {
 
     private record QueryTable(List<String> headers, List<List<Object>> rows) { }
 
+    /**
+     * 匯出完成後回傳給 CLI / UI 的總結結果。
+     */
     public record MonitorExportResult(Path configPath, Path outputDirectory, List<TaskResult> taskResults, List<String> failures) { }
 
+    /**
+     * 單一 monitor 匯出任務的執行狀態。
+     */
     public record TaskResult(String viewName, String filename, int rowCount, boolean success, boolean empty, String errorMessage) { }
 
+    /**
+     * 反序列化後的 JSON 設定結構。
+     */
     public record MonitorConfig(
             @JsonProperty("db_path") String dbPath,
             @JsonProperty("output_dir") String outputDir,
             List<MonitorTask> tasks
     ) { }
 
+    /**
+     * monitor 設定檔中的單一匯出工作定義。
+     */
     public record MonitorTask(String view, String filename, String type) { }
 }

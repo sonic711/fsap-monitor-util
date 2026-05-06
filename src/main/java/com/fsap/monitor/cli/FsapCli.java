@@ -12,6 +12,9 @@ import com.fsap.monitor.cli.command.UpdateMonitorDataCommand;
 import picocli.CommandLine.Command;
 
 @Component
+/**
+ * Picocli 根指令，負責收攏所有操作型子指令。
+ */
 @Command(
         name = "fsap-monitor-util",
         mixinStandardHelpOptions = true,

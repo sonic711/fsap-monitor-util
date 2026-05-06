@@ -25,6 +25,9 @@ import com.fsap.monitor.web.dto.SqlQueryResponse;
 @RestController
 @CrossOrigin(origins = "*")
 @RequestMapping("/api")
+/**
+ * 提供 ad-hoc SQL 執行與 schema 檢視的 REST 端點。
+ */
 public class QueryController {
 
     private final QueryService queryService;

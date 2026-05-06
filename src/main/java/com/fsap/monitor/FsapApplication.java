@@ -10,6 +10,13 @@ import org.springframework.boot.WebApplicationType;
 import org.springframework.boot.autoconfigure.SpringBootApplication;
 import org.springframework.boot.context.properties.ConfigurationPropertiesScan;
 
+/**
+ * 同時支援 CLI 與 Spring Boot Web 模式的統一啟動入口。
+ *
+ * <p>這裡會先把 Spring 參數與指令參數拆開，讓同一個 jar 可以同時扮演兩種角色：
+ * - 第一個指令是 {@code serve} 時，啟動 Web 伺服器
+ * - 其他情況則走批次 CLI 模式
+ */
 @SpringBootApplication
 @ConfigurationPropertiesScan
 public class FsapApplication {
@@ -18,7 +25,7 @@ public class FsapApplication {
     private static String[] cliArgs = new String[0];
 
     static {
-        // Trust project-provided Excel files and disable POI zip bomb inflate ratio checks.
+        // 此專案預設信任餵入的 Excel，因此關閉 POI 的 zip bomb inflate ratio 檢查。
         ZipSecureFile.setMinInflateRatio(0.0d);
     }
 
@@ -53,6 +60,8 @@ public class FsapApplication {
         List<String> translated = new java.util.ArrayList<>();
         for (int index = 0; index < args.length; index++) {
             String current = args[index];
+            // 使用者看到的是 Picocli 的 serve 參數，但真正啟動 Web 時仍要轉成
+            // Spring Boot 可理解的 server.* / fsap.* 屬性。
             if ("--port".equals(current) && index + 1 < args.length) {
                 translated.add("--server.port=" + args[++index]);
                 continue;

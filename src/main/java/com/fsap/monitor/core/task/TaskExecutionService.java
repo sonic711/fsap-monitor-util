@@ -26,6 +26,14 @@ import com.fsap.monitor.core.service.EnvironmentCheckService.CheckResult;
 import com.fsap.monitor.core.viewsync.ViewSyncService;
 
 @Service
+/**
+ * UI 觸發之操作型任務的後端協調中心。
+ *
+ * <p>UI 雖然會呈現引導式 workflow，但真正的保護機制在這裡：
+ * - 任務必須序列化執行
+ * - 任務歷程必須被記錄
+ * - 必須阻止錯誤順序，例如 doctor / ingest / sync views 尚未完成就先產報表
+ */
 public class TaskExecutionService {
 
     private static final Logger LOGGER = LoggerFactory.getLogger(TaskExecutionService.class);
@@ -65,6 +73,9 @@ public class TaskExecutionService {
         });
     }
 
+    /**
+     * 回傳目前執行中的任務、近期歷程與 workflow 狀態，供 dashboard 輪詢。
+     */
     public TaskDashboard dashboard(int limit) {
         synchronized (lock) {
             List<TaskSnapshot> snapshots = history.stream()
@@ -206,6 +217,8 @@ public class TaskExecutionService {
             if (runningTask != null && runningTask.status == TaskStatus.RUNNING) {
                 throw new IllegalStateException("Task already running: " + runningTask.displayName);
             }
+            // 這裡刻意只允許單執行緒。因為所有任務共用同一批檔案路徑與 DuckDB，
+            // 若平行執行會導致 race condition 與 workflow 狀態不一致。
             taskRun = new TaskRun(sequence.incrementAndGet(), taskType, displayName, emptyIfBlank(parameterSummary), LocalDateTime.now());
             runningTask = taskRun;
             history.add(0, taskRun);
@@ -262,6 +275,8 @@ public class TaskExecutionService {
         failedSteps.remove(workflowStep);
         switch (workflowStep) {
             case DOCTOR -> {
+                // doctor 一旦重新成功，代表新的檢查基準成立，下游步驟必須重新取得成功狀態，
+                // 因為它們可能依賴剛剛修正過的環境或設定。
                 completedSteps.remove(WorkflowStep.INGEST);
                 completedSteps.remove(WorkflowStep.SYNC_VIEWS);
                 completedSteps.remove(WorkflowStep.GENERATE_REPORT);
@@ -270,17 +285,19 @@ public class TaskExecutionService {
                 failedSteps.remove(WorkflowStep.GENERATE_REPORT);
             }
             case INGEST -> {
+                // 來源資料一旦更新，下游所有衍生結果都應視為失效。
                 completedSteps.remove(WorkflowStep.SYNC_VIEWS);
                 completedSteps.remove(WorkflowStep.GENERATE_REPORT);
                 failedSteps.remove(WorkflowStep.SYNC_VIEWS);
                 failedSteps.remove(WorkflowStep.GENERATE_REPORT);
             }
             case SYNC_VIEWS -> {
+                // view 重新整理後，報表結果可能立刻改變，因此報表完成狀態要失效。
                 completedSteps.remove(WorkflowStep.GENERATE_REPORT);
                 failedSteps.remove(WorkflowStep.GENERATE_REPORT);
             }
             case GENERATE_REPORT -> {
-                // Final workflow step, nothing downstream to reset.
+                // 最終步驟，後面沒有其他相依節點需要清除。
             }
         }
     }

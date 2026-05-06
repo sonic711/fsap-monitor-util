@@ -16,6 +16,9 @@ import com.fasterxml.jackson.annotation.JsonProperty;
 import com.fasterxml.jackson.databind.ObjectMapper;
 import com.fsap.monitor.core.service.ProjectPathService;
 
+/**
+ * 以 JSONL 形式保存近期 ad-hoc query 歷程，供 web UI 顯示。
+ */
 @Service
 public class QueryHistoryService {
 
@@ -48,6 +51,7 @@ public class QueryHistoryService {
                     StandardOpenOption.APPEND
             );
         } catch (Exception ignored) {
+            // query history 失敗不能反過來阻擋實際查詢。
         }
     }
 

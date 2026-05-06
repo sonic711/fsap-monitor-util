@@ -27,6 +27,12 @@ import com.fsap.monitor.infra.config.FsapProperties;
 import com.fsap.monitor.infra.duckdb.DuckDbConnectionFactory;
 
 @Service
+/**
+ * 依據 {@code 03_sql_logic/views/*.sql} 重新整理 DuckDB views。
+ *
+ * <p>各 view SQL 之間彼此會互相參照。這裡會先做一輪盡力而為的依賴排序，
+ * 然後保留多輪 retry 載入作為保險，處理那些無法單靠靜態分析精準推得的依賴。
+ */
 public class ViewSyncService {
 
     private static final Logger LOGGER = LoggerFactory.getLogger(ViewSyncService.class);
@@ -45,6 +51,9 @@ public class ViewSyncService {
         this.properties = properties;
     }
 
+    /**
+     * 由 service 自行管理 connection 生命週期的便利版本。
+     */
     public ViewSyncResult syncViews(Integer maxRoundsOverride, boolean failFast) {
         try (Connection connection = connectionFactory.openConnection()) {
             return syncViews(connection, maxRoundsOverride, failFast);
@@ -78,6 +87,8 @@ public class ViewSyncService {
         int configuredRounds = maxRoundsOverride != null ? maxRoundsOverride : properties.getViews().getMaxRounds();
         int maxRounds = Math.max(configuredRounds, sqlFiles.size());
 
+        // 先 drop 再重建，避免 refresh 失敗時還悄悄留下舊版 view 定義，
+        // 讓後續報表讀到過期邏輯。
         dropExistingViews(connection, sqlFiles);
 
         for (int round = 1; round <= maxRounds && !pending.isEmpty(); round++) {
@@ -109,6 +120,8 @@ public class ViewSyncService {
             }
 
             if (roundSuccessCount == 0) {
+                // 若某一輪完全沒有進度，代表剩下的檔案已被壞 SQL、缺依賴或循環依賴卡死，
+                // 再重試也只會得到同樣結果。
                 LOGGER.warn("View sync stopped after round {} because no pending views could be resolved", round);
                 for (Path sqlFile : nextPending) {
                     String message = lastErrors.getOrDefault(sqlFile, "Unknown error");
@@ -182,6 +195,7 @@ public class ViewSyncService {
             return ordered;
         }
 
+        // 靜態依賴分析故意做得較輕量；排不準的部分交給後面的 retry rounds 收斂。
         List<Path> unresolved = sqlFiles.stream()
                 .filter(path -> !ordered.contains(path))
                 .sorted(Comparator.comparing(path -> path.getFileName().toString()))
@@ -206,6 +220,8 @@ public class ViewSyncService {
             if (candidate.getKey().equals(currentViewName)) {
                 continue;
             }
+            // 用 word boundary 避免把 v_rt_cnt 誤判成命中較長的識別字，
+            // 例如 v_rt_cnt_daily。
             Pattern pattern = Pattern.compile("\\b" + Pattern.quote(candidate.getKey()) + "\\b");
             if (pattern.matcher(sqlContent).find()) {
                 dependencies.add(candidate.getValue());
@@ -230,5 +246,8 @@ public class ViewSyncService {
         }
     }
 
+    /**
+     * view refresh 結束後回傳給呼叫端的總結結果。
+     */
     public record ViewSyncResult(int successCount, int failureCount, List<String> failures) { }
 }

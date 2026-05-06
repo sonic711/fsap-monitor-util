@@ -12,6 +12,9 @@ import com.fsap.monitor.core.service.ProjectPathService;
 import com.fsap.monitor.core.task.TaskExecutionService;
 import com.fsap.monitor.infra.config.FsapProperties;
 
+/**
+ * 準備主畫面 Thymeleaf 所需的 dashboard model。
+ */
 @Controller
 public class PageController {
 
@@ -43,6 +46,8 @@ public class PageController {
 
     @GetMapping("/")
     public String queryPage(Model model) {
+        // 首頁初始化時先把 dashboard 需要的資料一次備齊，避免首屏渲染還要再發出
+        // 多個額外 API 請求才看得到完整畫面。
         model.addAttribute("databaseFile", projectPathService.databaseFile());
         model.addAttribute("inputDirectory", projectPathService.inputDir());
         model.addAttribute("readonly", properties.getWeb().isReadonly());

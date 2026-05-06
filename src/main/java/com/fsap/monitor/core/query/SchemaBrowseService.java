@@ -12,6 +12,9 @@ import org.springframework.stereotype.Service;
 
 import com.fsap.monitor.infra.duckdb.DuckDbConnectionFactory;
 
+/**
+ * 讀取給 UI sidebar 顯示的輕量 schema 快照。
+ */
 @Service
 public class SchemaBrowseService {
 

@@ -17,6 +17,9 @@ import org.springframework.http.HttpStatus;
 
 import com.fsap.monitor.core.artifact.ArtifactBrowseService;
 
+/**
+ * 透過安全的相對路徑規則提供下載產物與上傳檔案。
+ */
 @RestController
 public class FileDownloadController {
 
@@ -42,6 +45,8 @@ public class FileDownloadController {
     }
 
     private String buildContentDisposition(String filename) {
+        // 某些較舊的 servlet container 不接受 legacy filename 欄位中的原始 Unicode，
+        // 因此同時提供 ASCII fallback 與 RFC 5987 的 UTF-8 filename*。
         String asciiFallback = filename
                 .replaceAll("[^\\x20-\\x7E]", "_")
                 .replace("\"", "_");

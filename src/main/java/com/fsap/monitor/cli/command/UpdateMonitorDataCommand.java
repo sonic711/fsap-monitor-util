@@ -8,6 +8,9 @@ import picocli.CommandLine.Command;
 import picocli.CommandLine.Option;
 
 @Component
+/**
+ * monitor-data 匯出功能的 CLI 入口。
+ */
 @Command(name = "update-monitor-data", mixinStandardHelpOptions = true, description = "Export monitor data directly from DuckDB")
 public class UpdateMonitorDataCommand implements Runnable {
 

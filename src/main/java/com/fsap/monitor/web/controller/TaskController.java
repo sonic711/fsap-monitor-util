@@ -25,6 +25,15 @@ import com.fsap.monitor.web.dto.SyncViewsTaskRequest;
 @RestController
 @CrossOrigin(origins = "*")
 @RequestMapping("/api/tasks")
+/**
+ * 提供任務執行與任務相關產物查詢的 HTTP 端點。
+ *
+ * <p>這個 controller 刻意保持精簡，只負責：
+ * - readonly 模式的阻擋
+ * - 例外轉成適當 HTTP 狀態碼
+ *
+ * <p>真正的 workflow 順序與執行規則都集中在 {@link TaskExecutionService}。
+ */
 public class TaskController {
 
     private final TaskExecutionService taskExecutionService;
@@ -44,6 +53,9 @@ public class TaskController {
         this.artifactBrowseService = artifactBrowseService;
     }
 
+    /**
+     * UI task dashboard 輪詢狀態用的端點。
+     */
     @GetMapping
     public TaskExecutionService.TaskDashboard dashboard() {
         return taskExecutionService.dashboard(12);

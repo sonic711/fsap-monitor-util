@@ -11,6 +11,12 @@ import org.springframework.stereotype.Service;
 import com.fsap.monitor.infra.duckdb.DuckDbConnectionFactory;
 
 @Service
+/**
+ * 執行 CLI 與 UI workflow 共用的「Doctor」前置檢查。
+ *
+ * <p>它不是深度診斷工具，而是驗證 ingest、view sync、report generation
+ * 至少需要具備的檔案系統與資料庫前提是否到位。
+ */
 public class EnvironmentCheckService {
 
     private final ProjectPathService projectPathService;
@@ -21,6 +27,12 @@ public class EnvironmentCheckService {
         this.connectionFactory = connectionFactory;
     }
 
+    /**
+     * 執行 workflow gate 使用的有序檢查清單。
+     *
+     * <p>檢查順序對應最常見的環境設定錯誤：
+     * 先看目錄是否存在，再看目標是否可寫，最後檢查資料庫連線。
+     */
     public DoctorReport runChecks() {
         List<CheckResult> checks = new ArrayList<>();
         checks.add(checkDirectory("Base directory", projectPathService.baseDir(), true));
@@ -73,7 +85,13 @@ public class EnvironmentCheckService {
         }
     }
 
+    /**
+     * 回傳給 UI / CLI 的整體檢查結果。
+     */
     public record DoctorReport(boolean healthy, List<CheckResult> checks) { }
 
+    /**
+     * 單一檢查項目的結果，用於畫面呈現與 workflow 判斷。
+     */
     public record CheckResult(String name, boolean ok, String target, String message) { }
 }

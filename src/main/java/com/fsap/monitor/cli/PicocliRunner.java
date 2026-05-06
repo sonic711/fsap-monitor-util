@@ -12,6 +12,9 @@ import picocli.CommandLine;
 
 @Component
 @ConditionalOnNotWebApplication
+/**
+ * 在非 Web 模式下，負責把 Spring Boot 啟動流程接到 Picocli 指令執行。
+ */
 public class PicocliRunner implements ApplicationRunner, ExitCodeGenerator {
 
     private final FsapCli fsapCli;

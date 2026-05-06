@@ -6,6 +6,10 @@ import org.springframework.stereotype.Component;
 import picocli.CommandLine;
 
 @Component
+/**
+ * 讓 Picocli 透過 Spring 建立 command 物件，這樣所有 CLI 指令都能使用
+ * 建構式注入的 Spring bean。
+ */
 public class PicocliSpringFactory implements CommandLine.IFactory {
 
     private final AutowireCapableBeanFactory beanFactory;

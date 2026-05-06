@@ -8,6 +8,9 @@ import com.fsap.monitor.core.service.EnvironmentCheckService.CheckResult;
 import picocli.CommandLine.Command;
 
 @Component
+/**
+ * Doctor 預檢流程的 CLI 包裝入口。
+ */
 @Command(name = "doctor", mixinStandardHelpOptions = true, description = "Run environment health checks")
 public class DoctorCommand implements Runnable {
 

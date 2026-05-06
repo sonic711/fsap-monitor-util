@@ -42,6 +42,13 @@ import com.fsap.monitor.core.service.ProjectPathService;
 import com.fsap.monitor.infra.config.FsapProperties;
 
 @Service
+/**
+ * 將來源 Excel workbook 轉成 {@code 02_source_lake} 下的 JSONL.GZ 檔案。
+ *
+ * <p>每個目標 sheet 都會依日期輸出成一個 gzip JSON Lines 檔。
+ * 後續 DuckDB view 會直接讀這些檔案，因此 ingest 只負責資料正規化，
+ * 不會把資料先倒進資料庫 table。
+ */
 public class IngestService {
 
     private static final Logger LOGGER = LoggerFactory.getLogger(IngestService.class);
@@ -60,6 +67,9 @@ public class IngestService {
         this.objectMapper = objectMapper;
     }
 
+    /**
+     * CLI 與 UI 共用的 ingest 主入口。
+     */
     public IngestResult ingest(boolean force, Integer limit, String date) {
         Pattern filenamePattern = Pattern.compile(properties.getIngest().getFilenamePattern());
         List<String> targetSheets = List.copyOf(properties.getIngest().getTargetSheets());
@@ -123,6 +133,8 @@ public class IngestService {
             return stream
                     .filter(path -> path.getFileName().toString().toLowerCase(Locale.ROOT).endsWith(".xlsx"))
                     .filter(path -> matchesRequestedDate(path.getFileName().toString(), filenamePattern, exactDate))
+                    // 檔名中包含 YYYYMMDD，因此字串反向排序同時也是日期新到舊排序，
+                    // 可以直接搭配 limit 取最新 N 份檔案。
                     .sorted(Comparator.comparing((Path path) -> path.getFileName().toString()).reversed())
                     .collect(Collectors.toList());
         } catch (Exception exception) {
@@ -158,6 +170,8 @@ public class IngestService {
                     .map(workbook::getSheetName)
                     .collect(Collectors.toSet());
 
+            // 有些來源 sheet 是選配，並不是每份 workbook 都存在。
+            // 因此 skip 判定只能要求「這份 workbook 真的有的 sheet」都已輸出。
             List<String> expectedSheets = targetSheets.stream()
                     .filter(availableSheets::contains)
                     .toList();
@@ -241,6 +255,8 @@ public class IngestService {
                     String header = headers.get(columnIndex);
                     record.put(header, normalizeCellValue(row.getCell(columnIndex, Row.MissingCellPolicy.RETURN_BLANK_AS_NULL)));
                 }
+                // 每筆資料都補上來源追蹤欄位，後續若指標異常，才能一路回溯到
+                // 原始 workbook、sheet 與匯入日期。
                 record.put("_file", sourceFilename);
                 record.put("_sheet", sheetName);
                 record.put("_dt", yyyymmdd);
@@ -266,6 +282,8 @@ public class IngestService {
     }
 
     private boolean isBlankRow(Row row, int headerCount) {
+        // 只含格式、沒有實際內容的尾端空白列要視為空列，避免 source lake 產生
+        // 沒有意義的 JSON 物件。
         for (int columnIndex = 0; columnIndex < headerCount; columnIndex++) {
             Cell cell = row.getCell(columnIndex, Row.MissingCellPolicy.RETURN_BLANK_AS_NULL);
             if (cell != null && cell.getCellType() != CellType.BLANK && !cell.toString().isBlank()) {
@@ -282,6 +300,8 @@ public class IngestService {
 
         CellType type = cell.getCellType();
         if (type == CellType.FORMULA) {
+            // 這裡使用公式快取結果，因為 ingest 把 workbook 視為既有輸入成品，
+            // 而不是要重新扮演 spreadsheet engine 去計算公式。
             type = cell.getCachedFormulaResultType();
         }
 
@@ -301,6 +321,8 @@ public class IngestService {
     }
 
     private Object normalizeNumericCell(Cell cell) {
+        // Excel 的日期本質上是浮點序號，因此必須先判斷日期欄位，
+        // 再做一般數值轉換。
         if (DateUtil.isCellDateFormatted(cell)) {
             Date date = cell.getDateCellValue();
             if (date == null) {

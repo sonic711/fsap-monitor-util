@@ -6,6 +6,12 @@ import picocli.CommandLine.Command;
 import picocli.CommandLine.Option;
 
 @Component
+/**
+ * 提供給使用者看的 Web 模式指令佔位說明。
+ *
+ * <p>真正的 Web 啟動邏輯放在 {@link com.fsap.monitor.FsapApplication}，
+ * 因為 Spring Boot 必須先接管整個應用程式啟動流程，Picocli 才能接續運作。
+ */
 @Command(name = "serve", mixinStandardHelpOptions = true, description = "Start the Spring Boot web server")
 public class ServeCommand implements Runnable {
 

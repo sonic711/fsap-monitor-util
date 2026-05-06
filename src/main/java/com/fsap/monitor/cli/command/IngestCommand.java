@@ -8,6 +8,9 @@ import picocli.CommandLine.Command;
 import picocli.CommandLine.Option;
 
 @Component
+/**
+ * Excel -> JSONL.GZ 匯入步驟的 CLI 入口。
+ */
 @Command(name = "ingest", mixinStandardHelpOptions = true, description = "Convert Excel input into JSONL.gz source lake files")
 public class IngestCommand implements Runnable {
 

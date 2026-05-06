@@ -15,6 +15,12 @@ import org.springframework.stereotype.Service;
 
 import com.fsap.monitor.core.service.ProjectPathService;
 
+/**
+ * Enumerates downloadable artifacts shown by the UI.
+ *
+ * <p>This service keeps filesystem traversal and download path validation out
+ * of controllers, which makes it the central place to adjust artifact exposure.
+ */
 @Service
 public class ArtifactBrowseService {
 

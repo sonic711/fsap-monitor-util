@@ -19,6 +19,12 @@ import com.fsap.monitor.core.service.ProjectPathService;
 import com.fsap.monitor.infra.config.FsapProperties;
 
 @Service
+/**
+ * 將部分填寫的報表參數請求補齊成完整可執行的參數集。
+ *
+ * <p>UI 刻意只暴露較少的參數欄位，但 SQL 模板仍需要完整日期與時間區間。
+ * 這個 service 會負責推導缺少的細節，讓 UI 與 CLI 可以共用同一套報表執行引擎。
+ */
 public class ReportParameterDefaultsService {
 
     private static final DateTimeFormatter MONTH_FORMAT = DateTimeFormatter.ofPattern("yyyy-MM");
@@ -37,10 +43,16 @@ public class ReportParameterDefaultsService {
         this.properties = properties;
     }
 
+    /**
+     * 回傳與 UI 初始畫面相同的預設報表參數。
+     */
     public ReportGenerationRequest defaultRequest() {
         return resolve(ReportGenerationRequest.empty());
     }
 
+    /**
+     * 依據最小輸入集合推導所有缺漏欄位。
+     */
     public ReportGenerationRequest resolve(ReportGenerationRequest request) {
         ReportGenerationRequest normalized = request == null ? ReportGenerationRequest.empty() : request.normalize();
 
@@ -61,6 +73,7 @@ public class ReportParameterDefaultsService {
                 ? targetMonth.atDay(1)
                 : parseDate(normalized.rangeStartDate(), "rangeStartDate");
         LocalDate rangeEndDate = normalized.rangeEndDate() == null
+                // atEndOfMonth() 會正確處理 28/29/30/31 天與閏年，不需手動判斷月底天數。
                 ? targetMonth.atEndOfMonth()
                 : parseDate(normalized.rangeEndDate(), "rangeEndDate");
         if (rangeEndDate.isBefore(rangeStartDate)) {
@@ -101,6 +114,7 @@ public class ReportParameterDefaultsService {
     }
 
     private YearMonth detectReferenceMonth() {
+        // 優先採用專案資料中實際出現的最新月份，讓預設報表月份跟最新匯入期間同步。
         return Stream.of(scanLatestInputDate(), scanLatestSourceLakeDate(), LocalDate.now())
                 .filter(java.util.Objects::nonNull)
                 .max(Comparator.naturalOrder())

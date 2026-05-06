@@ -44,6 +44,12 @@ import com.fsap.monitor.core.viewsync.ViewSyncService;
 import com.fsap.monitor.infra.duckdb.DuckDbConnectionFactory;
 
 @Service
+/**
+ * 執行報表 SQL，產出最終 Excel workbook 與對應 CSV 產物。
+ *
+ * <p>每次執行都會放進獨立的 timestamp 輸出目錄，並且額外保存當次實際解析後的
+ * 參數快照，方便未來除錯與重現同一批報表。
+ */
 public class ReportGenerationService {
 
     private static final Logger LOGGER = LoggerFactory.getLogger(ReportGenerationService.class);
@@ -77,6 +83,9 @@ public class ReportGenerationService {
         this.objectMapper = objectMapper;
     }
 
+    /**
+     * 依據輸入參數產生一批完整報表。
+     */
     public ReportGenerationResult generate(ReportGenerationRequest request) {
         ReportGenerationRequest effectiveRequest = reportParameterDefaultsService.resolve(request);
         String timestamp = effectiveRequest.timestamp() != null
@@ -110,6 +119,8 @@ public class ReportGenerationService {
         try (Connection connection = connectionFactory.openConnection();
              XSSFWorkbook workbook = new XSSFWorkbook()) {
             logExecution("✅ [資料庫] 已連接實體庫: " + projectPathService.databaseFile().getFileName());
+            // POI 的 CellStyle 只能屬於單一 workbook。每次重新建立可以避免
+            // 第二次產報時誤用上一份 workbook style 的錯誤。
             WorkbookStyles workbookStyles = createWorkbookStyles(workbook);
 
             loadMacros(connection);
@@ -131,6 +142,8 @@ public class ReportGenerationService {
                     String errorMessage = reportFile.getFileName() + ": " + exception.getMessage();
                     failures.add(errorMessage);
                     reportResults.add(new ReportFileResult(baseName, 0, false, exception.getMessage()));
+                    // 把失敗資訊直接寫進 workbook，這樣操作人員即使不看 server log，
+                    // 也能從報表成品本身知道哪一頁出了什麼問題。
                     writeErrorSheet(workbook, workbookStyles, nextSheetName("ERR_" + baseName, usedSheetNames), exception.getMessage());
                     logExecution("  ❌ 失敗: " + exception.getMessage());
                     if (!effectiveRequest.continueOnError()) {
@@ -171,6 +184,7 @@ public class ReportGenerationService {
         try (Stream<Path> stream = Files.list(reportsDir)) {
             return stream
                     .filter(path -> path.getFileName().toString().endsWith(".sql"))
+                    // workbook 分頁順序必須符合報表檔名上的數字編號慣例。
                     .sorted(reportFileComparator())
                     .collect(Collectors.toList());
         } catch (Exception exception) {
@@ -186,6 +200,8 @@ public class ReportGenerationService {
             List<Integer> leftOrder = extractReportOrder(leftName);
             List<Integer> rightOrder = extractReportOrder(rightName);
 
+            // 逐段數字比較才能得到 1 < 1.1 < 2 的結果，避免單純字串排序時
+            // 出現 "10" 排在 "2" 前面的問題。
             int segmentCount = Math.min(leftOrder.size(), rightOrder.size());
             for (int index = 0; index < segmentCount; index++) {
                 int compare = Integer.compare(leftOrder.get(index), rightOrder.get(index));
@@ -262,6 +278,8 @@ public class ReportGenerationService {
                     return readResultSet(resultSet);
                 }
             } catch (SQLException exception) {
+                // 動態 pivot 報表在選定期間完全沒有資料時，DuckDB 會因為展不出欄位而失敗。
+                // 這裡改為輸出可讀提示頁，而不是讓整批報表直接中止。
                 if (looksLikePivotSql(sql) && isEmptyProjectionBinderError(exception)) {
                     logExecution("  ℹ️ 無資料可供動態 PIVOT 展開，改輸出提示頁: " + reportFile.getFileName());
                     return noDataTable(reportFile);
@@ -347,6 +365,8 @@ public class ReportGenerationService {
             return;
         }
         if (value instanceof Number numberValue) {
+            // 一般 Number 的處理要放在 BigDecimal / BigInteger 後面，
+            // 才能保留較精確型別原本想呈現的格式邏輯。
             cell.setCellValue(numberValue.doubleValue());
             cell.setCellStyle(isIntegralNumber(numberValue) ? workbookStyles.integerNumberCellStyle() : workbookStyles.decimalNumberCellStyle());
             return;
@@ -406,6 +426,7 @@ public class ReportGenerationService {
         safe = safe.length() > 31 ? safe.substring(0, 31) : safe;
         String resolved = safe;
         int counter = 1;
+        // Excel sheet 名稱最多 31 字且必須唯一，因此這裡要同時處理裁切與去重。
         while (!usedSheetNames.add(resolved)) {
             String suffix = "_" + counter++;
             int maxBaseLength = Math.max(1, 31 - suffix.length());
@@ -474,6 +495,9 @@ public class ReportGenerationService {
 
     private record QueryTable(List<String> headers, List<List<Object>> rows) { }
 
+    /**
+     * 僅限單一 workbook 批次內重用的樣式集合。
+     */
     private record WorkbookStyles(CellStyle integerNumberCellStyle, CellStyle decimalNumberCellStyle) { }
 
     public record ReportGenerationResult(
@@ -486,5 +510,8 @@ public class ReportGenerationService {
             List<String> failures
     ) { }
 
+    /**
+     * 單一報表 SQL 在一個批次中的執行結果。
+     */
     public record ReportFileResult(String reportName, int rowCount, boolean success, String errorMessage) { }
 }

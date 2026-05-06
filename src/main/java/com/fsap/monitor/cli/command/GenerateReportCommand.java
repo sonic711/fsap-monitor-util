@@ -9,6 +9,9 @@ import picocli.CommandLine.Command;
 import picocli.CommandLine.Option;
 
 @Component
+/**
+ * 報表產生功能的 CLI 入口，支援用參數覆寫預設報表區間。
+ */
 @Command(name = "generate-report", mixinStandardHelpOptions = true, description = "Execute report SQL and produce Excel/CSV output")
 public class GenerateReportCommand implements Runnable {
 
