@@ -49,13 +49,13 @@ SystemStats AS (
     GROUP BY b.PR_ID, i.PR_CATEGORY
 ),
 PeakDayStats AS (
-    -- 步驟 4：找出每個 PR_ID 的峰日與峰值時間
+    -- 步驟 4：找出每個 PR_ID 的處理時間峰日，與第 7 頁定義一致
     SELECT 
         PR_ID,
         tx_dt_str AS peak_dt,
         daily_cnt AS peak_day_cnt,
         daily_avg_ms AS peak_avg_ms,
-        ROW_NUMBER() OVER(PARTITION BY PR_ID ORDER BY daily_cnt DESC) as rn
+        ROW_NUMBER() OVER(PARTITION BY PR_ID ORDER BY daily_avg_ms DESC) as rn
     FROM BaseDaily
 ),
 PeakHourStats AS (

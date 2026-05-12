@@ -45,7 +45,7 @@ PeakDayStats AS (
         PR_ID,
         tx_dt_str AS peak_dt,
         daily_avg_ms AS peak_avg_ms,
-        ROW_NUMBER() OVER(PARTITION BY PR_ID ORDER BY daily_cnt DESC) as rn
+        ROW_NUMBER() OVER(PARTITION BY PR_ID ORDER BY daily_avg_ms DESC) as rn
     FROM BaseDaily
 )
 
