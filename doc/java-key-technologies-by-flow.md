@@ -502,6 +502,7 @@ Excel 報表中的數字欄位會套用：
 - TSV 複製與 CSV 下載
 - Chart.js 折線圖，依 `application / TARGET_IP / TARGET_PORT` 分組顯示 Top N series
 - legend 點擊隱藏狀態保留，避免 3 秒輪詢重繪後恢復
+- monitor 資料刷新不綁定每次任務狀態輪詢，只在首次進入頁籤、手動 refresh、或 `update-monitor-data` 完成後執行
 
 ---
 

@@ -72,7 +72,7 @@
 - 在 UI 以步驟編號、狀態標示與鎖定狀態呈現 workflow
 - 在後端 API 直接鎖順序，避免跳步執行
 - `Recent Report Batches` 提供局部 refresh 按鈕，不必整頁重整
-- `Monitor Data Exports` 提供局部 refresh 按鈕，並會在任務輪詢時同步刷新
+- `Monitor Data Exports` 提供局部 refresh 按鈕；資料只在按 Refresh、首次進入 `Monitor Dashboard`、或 `Update Monitor Data` 完成後刷新
 - `Monitor Data Exports` 已拆到獨立 `Monitor Dashboard` 頁籤
 - `Monitor Data Exports` 直接提供 CSV 互動表格，不必另建外部 HTML 頁面讀取 `.js`
 - `Monitor Data Exports` 表格已支援搜尋、欄位排序、分頁、TSV 複製與 CSV 下載，對齊 Python Streamlit `st.dataframe()` 的主要使用情境

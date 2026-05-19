@@ -361,6 +361,7 @@ java -jar ... generate-report
 - UI 直接顯示 CSV 互動表格，支援搜尋、欄位排序、分頁、TSV 複製與 CSV 下載。
 - UI 使用內嵌 Chart.js 顯示趨勢折線圖，資源固定放在 `src/main/resources/static/vendor/chartjs/chart.umd.min.js`，避免部署時依賴 CDN。
 - 圖表 series 依 `application / TARGET_IP / TARGET_PORT` 分組；legend 點擊隱藏狀態會保留，避免輪詢刷新後又全部顯示。
+- 任務狀態仍每 3 秒輪詢，但 monitor CSV / 圖表資料不跟著每次輪詢重載，只在首次進入頁籤、手動按 `Refresh`、或 `Update Monitor Data` 任務完成後刷新。
 
 #### 驗證
 

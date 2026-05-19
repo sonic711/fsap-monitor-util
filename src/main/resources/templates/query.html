@@ -814,6 +814,8 @@ ORDER BY table_type, table_name;</textarea>
 <script src="/vendor/chartjs/chart.umd.min.js"></script>
 <script>
 let monitorTables = [];
+let monitorDataLoaded = false;
+let monitorUpdateWasRunning = false;
 const monitorTableStates = {};
 const monitorCharts = {};
 
@@ -825,7 +827,11 @@ function openTab(tabId, button) {
         button.classList.add("active");
     }
     if (tabId === "monitor-tab") {
-        requestAnimationFrame(renderMonitorCharts);
+        if (!monitorDataLoaded) {
+            refreshMonitorAll();
+        } else {
+            requestAnimationFrame(renderMonitorCharts);
+        }
     }
 }
 
@@ -929,8 +935,7 @@ async function startUpdateMonitorData() {
         await postTask("/api/tasks/update-monitor-data", {
             configPath: trimToNull(document.getElementById("monitor-config").value)
         });
-        await refreshMonitorFiles();
-        await refreshMonitorData();
+        monitorUpdateWasRunning = true;
     } catch (error) {
         // Feedback is already rendered in postTask.
     }
@@ -1007,10 +1012,6 @@ function setWorkflowFeedback(message, isError = false) {
     if (!feedback) return;
     feedback.textContent = message;
     feedback.classList.toggle("error", isError);
-}
-
-function isMonitorTabActive() {
-    return document.getElementById("monitor-tab")?.classList.contains("active") === true;
 }
 
 function renderWorkflow(workflowStatus) {
@@ -1512,9 +1513,12 @@ async function refreshTasks() {
         renderRunningTask(payload.runningTask);
         renderTaskHistory(payload.recentTasks || []);
         renderWorkflow(payload.workflowStatus);
-        if (isMonitorTabActive() && (!payload.runningTask || payload.runningTask.taskType !== "update-monitor-data")) {
-            await refreshMonitorFiles();
-            await refreshMonitorData();
+        const runningTaskType = payload.runningTask ? payload.runningTask.taskType : null;
+        if (runningTaskType === "update-monitor-data") {
+            monitorUpdateWasRunning = true;
+        } else if (monitorUpdateWasRunning) {
+            monitorUpdateWasRunning = false;
+            await refreshMonitorAll();
         }
     } catch (error) {
         console.error("Unable to refresh tasks", error);
@@ -1556,6 +1560,7 @@ async function refreshMonitorData() {
         const response = await fetch("/api/tasks/monitor-data?limit=10000");
         const payload = await response.json();
         renderMonitorData(payload || []);
+        monitorDataLoaded = true;
     } catch (error) {
         console.error("Unable to refresh monitor data", error);
     }
@@ -1593,8 +1598,6 @@ refreshDerivedReportRanges();
 refreshTasks();
 refreshInputFiles();
 refreshReportBatches();
-refreshMonitorFiles();
-refreshMonitorData();
 setInterval(refreshTasks, 3000);
 </script>
 </body>
