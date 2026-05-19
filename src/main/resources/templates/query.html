@@ -405,6 +405,97 @@
             border-bottom: 1px dashed var(--line);
             padding-bottom: 6px;
         }
+        .monitor-table-wrap {
+            margin-top: 12px;
+            overflow: auto;
+            max-height: 520px;
+            border: 1px solid var(--line);
+            border-radius: 12px;
+            background: #fffdfa;
+        }
+        .monitor-table-toolbar {
+            display: grid;
+            grid-template-columns: minmax(180px, 1fr) auto auto auto;
+            gap: 8px;
+            align-items: end;
+            margin-top: 12px;
+        }
+        .monitor-table-toolbar label {
+            margin: 0;
+        }
+        .monitor-table-toolbar input,
+        .monitor-table-toolbar select {
+            min-height: 38px;
+        }
+        .monitor-pager {
+            display: flex;
+            flex-wrap: wrap;
+            gap: 8px;
+            align-items: center;
+            justify-content: space-between;
+            margin-top: 10px;
+        }
+        .monitor-pager .actions {
+            margin: 0;
+        }
+        .monitor-chart-panel {
+            margin-top: 12px;
+            border: 1px solid var(--line);
+            border-radius: 12px;
+            background: #fffdfa;
+            padding: 12px;
+        }
+        .monitor-chart-toolbar {
+            display: grid;
+            grid-template-columns: minmax(160px, 1fr) minmax(120px, auto);
+            gap: 8px;
+            align-items: end;
+            margin-bottom: 12px;
+        }
+        .monitor-chart-toolbar label {
+            margin: 0;
+        }
+        .monitor-chart-box {
+            height: 320px;
+            min-height: 320px;
+            position: relative;
+        }
+        .monitor-chart-box canvas {
+            width: 100%;
+            height: 100%;
+        }
+        .monitor-table th button {
+            width: 100%;
+            padding: 0;
+            border: 0;
+            background: transparent;
+            color: inherit;
+            font: inherit;
+            text-align: left;
+            cursor: pointer;
+        }
+        .monitor-table {
+            width: 100%;
+            border-collapse: collapse;
+            font: 12px/1.45 "SFMono-Regular", Menlo, monospace;
+            white-space: nowrap;
+        }
+        .monitor-table th,
+        .monitor-table td {
+            border-bottom: 1px solid #eee3d5;
+            padding: 7px 9px;
+            text-align: left;
+            vertical-align: top;
+        }
+        .monitor-table th {
+            position: sticky;
+            top: 0;
+            background: #f6efe5;
+            z-index: 1;
+        }
+        .monitor-table td.is-number {
+            text-align: right;
+        }
         .muted {
             color: var(--muted);
         }
@@ -419,6 +510,12 @@
                 grid-template-columns: 1fr;
             }
             .workflow-grid {
+                grid-template-columns: 1fr;
+            }
+            .monitor-table-toolbar {
+                grid-template-columns: 1fr;
+            }
+            .monitor-chart-toolbar {
                 grid-template-columns: 1fr;
             }
         }
@@ -436,6 +533,7 @@
         </div>
         <div class="tab-bar">
             <button type="button" class="tab-button active" data-tab-target="operations-tab" onclick="openTab('operations-tab', this)">Operations</button>
+            <button type="button" class="tab-button" data-tab-target="monitor-tab" onclick="openTab('monitor-tab', this)">Monitor Dashboard</button>
             <button type="button" class="tab-button" data-tab-target="query-tab" onclick="openTab('query-tab', this)">Query Console</button>
         </div>
     </section>
@@ -611,16 +709,6 @@
                     <div class="muted" id="report-batch-empty" th:style="${#lists.isEmpty(recentReportBatches) ? '' : 'display:none;'}">目前沒有批次報表產物。</div>
                 </article>
 
-                <article class="panel" id="monitor">
-                    <h2>Monitor Data Exports</h2>
-                    <p>這裡對應 `update-monitor-data` 的輸出，包含 `CSV` 與包裝好的 `JS` 檔案。</p>
-                    <div class="file-links" th:if="${!#lists.isEmpty(monitorFiles)}">
-                        <a th:each="file : ${monitorFiles}"
-                           th:href="@{/downloads/file(path=${file.relativePath})}"
-                           th:text="${file.filename}">monitor-file</a>
-                    </div>
-                    <div class="muted" th:if="${#lists.isEmpty(monitorFiles)}">目前沒有監控資料輸出。</div>
-                </article>
             </div>
 
             <div class="stack">
@@ -656,6 +744,26 @@
                     <div class="muted" id="task-history-empty" th:style="${#lists.isEmpty(taskDashboard.recentTasks) ? '' : 'display:none;'}">目前尚無 UI 任務執行紀錄。</div>
                 </aside>
             </div>
+        </div>
+    </section>
+
+    <section id="monitor-tab" class="tab-panel">
+        <div class="stack">
+            <article class="panel" id="monitor">
+                <div class="panel-head">
+                    <h2>Monitor Data Exports</h2>
+                    <button type="button" class="ghost" onclick="refreshMonitorAll()">Refresh</button>
+                </div>
+                <p>這裡對應 `update-monitor-data` 的輸出，包含 `CSV`、包裝好的 `JS` 檔案、互動表格與 Chart.js 趨勢圖。</p>
+                <div class="file-links" id="monitor-file-list">
+                    <a th:each="file : ${monitorFiles}"
+                       th:href="@{/downloads/file(path=${file.relativePath})}"
+                       th:text="${file.filename}">monitor-file</a>
+                </div>
+                <div class="muted" id="monitor-file-empty" th:style="${#lists.isEmpty(monitorFiles) ? '' : 'display:none;'}">目前沒有監控資料輸出。</div>
+                <div class="list" id="monitor-data-list" style="margin-top:14px;"></div>
+                <div class="muted" id="monitor-data-empty">目前沒有可預覽的監控 CSV。</div>
+            </article>
         </div>
     </section>
 
@@ -703,13 +811,21 @@ ORDER BY table_type, table_name;</textarea>
     </section>
 </div>
 
+<script src="/vendor/chartjs/chart.umd.min.js"></script>
 <script>
+let monitorTables = [];
+const monitorTableStates = {};
+const monitorCharts = {};
+
 function openTab(tabId, button) {
     document.querySelectorAll(".tab-panel").forEach(panel => panel.classList.remove("active"));
     document.querySelectorAll(".tab-button").forEach(item => item.classList.remove("active"));
     document.getElementById(tabId).classList.add("active");
     if (button) {
         button.classList.add("active");
+    }
+    if (tabId === "monitor-tab") {
+        requestAnimationFrame(renderMonitorCharts);
     }
 }
 
@@ -813,6 +929,8 @@ async function startUpdateMonitorData() {
         await postTask("/api/tasks/update-monitor-data", {
             configPath: trimToNull(document.getElementById("monitor-config").value)
         });
+        await refreshMonitorFiles();
+        await refreshMonitorData();
     } catch (error) {
         // Feedback is already rendered in postTask.
     }
@@ -858,7 +976,9 @@ function escapeHtml(text) {
     return String(text)
         .replaceAll("&", "&amp;")
         .replaceAll("<", "&lt;")
-        .replaceAll(">", "&gt;");
+        .replaceAll(">", "&gt;")
+        .replaceAll('"', "&quot;")
+        .replaceAll("'", "&#39;");
 }
 
 function statusClass(status) {
@@ -887,6 +1007,10 @@ function setWorkflowFeedback(message, isError = false) {
     if (!feedback) return;
     feedback.textContent = message;
     feedback.classList.toggle("error", isError);
+}
+
+function isMonitorTabActive() {
+    return document.getElementById("monitor-tab")?.classList.contains("active") === true;
 }
 
 function renderWorkflow(workflowStatus) {
@@ -998,6 +1122,389 @@ function renderReportBatches(batches) {
     `).join("");
 }
 
+function renderMonitorFiles(files) {
+    const container = document.getElementById("monitor-file-list");
+    const empty = document.getElementById("monitor-file-empty");
+    if (!container || !empty) return;
+    if (!files || files.length === 0) {
+        container.innerHTML = "";
+        empty.style.display = "";
+        return;
+    }
+    empty.style.display = "none";
+    container.innerHTML = files.map(file => `
+        <a href="/downloads/file?path=${encodeURIComponent(file.relativePath)}">${escapeHtml(file.filename)}</a>
+    `).join("");
+}
+
+function renderMonitorData(tables) {
+    const container = document.getElementById("monitor-data-list");
+    const empty = document.getElementById("monitor-data-empty");
+    if (!container || !empty) return;
+    if (!tables || tables.length === 0) {
+        monitorTables = [];
+        container.innerHTML = "";
+        empty.style.display = "";
+        return;
+    }
+    monitorTables = tables;
+    empty.style.display = "none";
+    const markup = tables.map((table, tableIndex) => {
+        const headers = table.headers || [];
+        const state = getMonitorTableState(tableIndex);
+        const metricColumns = numericMonitorColumns(table);
+        if (state.metricColumn === null || !metricColumns.includes(state.metricColumn)) {
+            state.metricColumn = defaultMonitorMetricColumn(table, metricColumns);
+        }
+        const filteredRows = getFilteredMonitorRows(tableIndex);
+        const sortedRows = getSortedMonitorRows(tableIndex, filteredRows);
+        const pageSize = state.pageSize;
+        const totalPages = Math.max(Math.ceil(sortedRows.length / pageSize), 1);
+        state.page = Math.min(Math.max(state.page, 1), totalPages);
+        const pageStart = (state.page - 1) * pageSize;
+        const pageRows = sortedRows.slice(pageStart, pageStart + pageSize);
+        const sortLabel = state.sortColumn === null ? "" : ` ${state.sortDirection === "asc" ? "ASC" : "DESC"}`;
+        return `
+            <section class="item">
+                <strong>${escapeHtml(table.filename)}</strong>
+                <small>${escapeHtml(table.modifiedAt)} | rows=${escapeHtml(table.rowCount)}${table.truncated ? " | loaded first " + escapeHtml((table.rows || []).length) : ""}</small>
+                <div class="monitor-chart-panel">
+                    <div class="monitor-chart-toolbar">
+                        <label>
+                            Chart metric
+                            <select id="monitor-chart-metric-${tableIndex}" name="monitor-chart-metric-${tableIndex}" onchange="setMonitorMetric(${tableIndex}, this.value)">
+                                ${metricColumns.map(columnIndex => `<option value="${columnIndex}"${state.metricColumn === columnIndex ? " selected" : ""}>${escapeHtml(headers[columnIndex])}</option>`).join("")}
+                            </select>
+                        </label>
+                        <label>
+                            Series
+                            <select id="monitor-chart-series-${tableIndex}" name="monitor-chart-series-${tableIndex}" onchange="setMonitorSeriesLimit(${tableIndex}, this.value)">
+                                ${[3, 5, 8, 12].map(size => `<option value="${size}"${state.seriesLimit === size ? " selected" : ""}>Top ${size}</option>`).join("")}
+                            </select>
+                        </label>
+                    </div>
+                    ${metricColumns.length === 0 ? '<div class="muted">這份資料沒有可繪圖的數值欄位。</div>' : `<div class="monitor-chart-box"><canvas id="monitor-chart-${tableIndex}"></canvas></div>`}
+                </div>
+                <div class="monitor-table-toolbar">
+                    <label>
+                        Search
+                        <input id="monitor-table-search-${tableIndex}" name="monitor-table-search-${tableIndex}" type="search" value="${escapeHtml(state.search)}" oninput="setMonitorSearch(${tableIndex}, this.value)" placeholder="Filter current table">
+                    </label>
+                    <label>
+                        Page size
+                        <select id="monitor-table-page-size-${tableIndex}" name="monitor-table-page-size-${tableIndex}" onchange="setMonitorPageSize(${tableIndex}, this.value)">
+                            ${[25, 50, 100, 250, 500].map(size => `<option value="${size}"${state.pageSize === size ? " selected" : ""}>${size}</option>`).join("")}
+                        </select>
+                    </label>
+                    <button type="button" class="ghost" onclick="copyMonitorTableTsv(${tableIndex})">Copy TSV</button>
+                    <button type="button" class="ghost" onclick="downloadMonitorTableCsv(${tableIndex})">Download CSV</button>
+                </div>
+                <div class="monitor-table-wrap">
+                    <table class="monitor-table">
+                        <thead>
+                            <tr>${headers.map((header, columnIndex) => `
+                                <th><button type="button" onclick="sortMonitorTable(${tableIndex}, ${columnIndex})">${escapeHtml(header)}${state.sortColumn === columnIndex ? sortLabel : ""}</button></th>
+                            `).join("")}</tr>
+                        </thead>
+                        <tbody>
+                            ${pageRows.map(row => `<tr>${row.map(value => `<td class="${isNumericValue(value) ? "is-number" : ""}">${escapeHtml(value ?? "")}</td>`).join("")}</tr>`).join("")}
+                        </tbody>
+                    </table>
+                </div>
+                <div class="monitor-pager">
+                    <small>Showing ${escapeHtml(sortedRows.length === 0 ? 0 : pageStart + 1)}-${escapeHtml(Math.min(pageStart + pageRows.length, sortedRows.length))} of ${escapeHtml(sortedRows.length)} filtered rows</small>
+                    <div class="actions">
+                        <button type="button" class="ghost" onclick="changeMonitorPage(${tableIndex}, -1)" ${state.page <= 1 ? "disabled" : ""}>Prev</button>
+                        <small>Page ${escapeHtml(state.page)} / ${escapeHtml(totalPages)}</small>
+                        <button type="button" class="ghost" onclick="changeMonitorPage(${tableIndex}, 1)" ${state.page >= totalPages ? "disabled" : ""}>Next</button>
+                    </div>
+                </div>
+            </section>
+        `;
+    }).join("");
+    container.innerHTML = markup;
+    requestAnimationFrame(renderMonitorCharts);
+}
+
+function getMonitorTableState(tableIndex) {
+    if (!monitorTableStates[tableIndex]) {
+        monitorTableStates[tableIndex] = {
+            search: "",
+            sortColumn: null,
+            sortDirection: "asc",
+            page: 1,
+            pageSize: 50,
+            metricColumn: null,
+            seriesLimit: 5,
+            hiddenSeries: {}
+        };
+    }
+    return monitorTableStates[tableIndex];
+}
+
+function numericMonitorColumns(table) {
+    const headers = table.headers || [];
+    const rows = table.rows || [];
+    return headers
+        .map((header, columnIndex) => ({header, columnIndex}))
+        .filter(column => {
+            const header = String(column.header || "").toLowerCase();
+            if (["log_hour", "target_port"].includes(header)) {
+                return false;
+            }
+            return rows.some(row => isNumericValue(row[column.columnIndex]));
+        })
+        .map(column => column.columnIndex);
+}
+
+function defaultMonitorMetricColumn(table, metricColumns) {
+    if (metricColumns.length === 0) {
+        return null;
+    }
+    const preferredHeaders = [
+        "avg_cpu_rate",
+        "avg_mem_rate",
+        "avg_disk_rate",
+        "avg_used_heap_mem_rate",
+        "max_cpu_rate",
+        "max_mem_rate",
+        "max_used_heap_mem_rate",
+        "record_count"
+    ];
+    const headers = table.headers || [];
+    for (const preferredHeader of preferredHeaders) {
+        const columnIndex = headers.findIndex(header => String(header).toLowerCase() === preferredHeader);
+        if (metricColumns.includes(columnIndex)) {
+            return columnIndex;
+        }
+    }
+    return metricColumns[0];
+}
+
+function setMonitorMetric(tableIndex, value) {
+    const state = getMonitorTableState(tableIndex);
+    state.metricColumn = Number(value);
+    state.hiddenSeries = {};
+    renderMonitorData(monitorTables);
+}
+
+function setMonitorSeriesLimit(tableIndex, value) {
+    const state = getMonitorTableState(tableIndex);
+    state.seriesLimit = Number(value) || 5;
+    state.hiddenSeries = {};
+    renderMonitorData(monitorTables);
+}
+
+function setMonitorSearch(tableIndex, value) {
+    const state = getMonitorTableState(tableIndex);
+    state.search = value || "";
+    state.page = 1;
+    renderMonitorData(monitorTables);
+}
+
+function setMonitorPageSize(tableIndex, value) {
+    const state = getMonitorTableState(tableIndex);
+    state.pageSize = Number(value) || 50;
+    state.page = 1;
+    renderMonitorData(monitorTables);
+}
+
+function sortMonitorTable(tableIndex, columnIndex) {
+    const state = getMonitorTableState(tableIndex);
+    if (state.sortColumn === columnIndex) {
+        state.sortDirection = state.sortDirection === "asc" ? "desc" : "asc";
+    } else {
+        state.sortColumn = columnIndex;
+        state.sortDirection = "asc";
+    }
+    renderMonitorData(monitorTables);
+}
+
+function changeMonitorPage(tableIndex, delta) {
+    const state = getMonitorTableState(tableIndex);
+    state.page += delta;
+    renderMonitorData(monitorTables);
+}
+
+function getFilteredMonitorRows(tableIndex) {
+    const table = monitorTables[tableIndex] || {};
+    const rows = table.rows || [];
+    const state = getMonitorTableState(tableIndex);
+    const query = state.search.trim().toLowerCase();
+    if (!query) {
+        return rows;
+    }
+    return rows.filter(row => row.some(value => String(value ?? "").toLowerCase().includes(query)));
+}
+
+function getSortedMonitorRows(tableIndex, rows) {
+    const state = getMonitorTableState(tableIndex);
+    if (state.sortColumn === null) {
+        return rows;
+    }
+    const direction = state.sortDirection === "asc" ? 1 : -1;
+    return [...rows].sort((left, right) => compareMonitorValues(left[state.sortColumn], right[state.sortColumn]) * direction);
+}
+
+function compareMonitorValues(left, right) {
+    const leftValue = left ?? "";
+    const rightValue = right ?? "";
+    if (isNumericValue(leftValue) && isNumericValue(rightValue)) {
+        return Number(leftValue) - Number(rightValue);
+    }
+    return String(leftValue).localeCompare(String(rightValue), "zh-Hant", {numeric: true, sensitivity: "base"});
+}
+
+function isNumericValue(value) {
+    return value !== null && value !== "" && !Number.isNaN(Number(value));
+}
+
+function monitorTimeLabel(headers, row) {
+    const dateIndex = headers.findIndex(header => String(header).toLowerCase() === "log_date");
+    const hourIndex = headers.findIndex(header => String(header).toLowerCase() === "log_hour");
+    const dateValue = dateIndex >= 0 ? String(row[dateIndex] ?? "") : "";
+    if (hourIndex < 0 || row[hourIndex] === null || row[hourIndex] === "") {
+        return dateValue || "N/A";
+    }
+    return `${dateValue} ${String(row[hourIndex]).padStart(2, "0")}:00`;
+}
+
+function monitorSeriesKey(headers, row) {
+    const parts = ["application", "TARGET_IP", "TARGET_PORT"]
+        .map(name => {
+            const columnIndex = headers.findIndex(header => String(header).toLowerCase() === name.toLowerCase());
+            return columnIndex >= 0 ? String(row[columnIndex] ?? "") : "";
+        })
+        .filter(Boolean);
+    return parts.length > 0 ? parts.join(" / ") : "Series";
+}
+
+function renderMonitorCharts() {
+    if (typeof Chart === "undefined") {
+        return;
+    }
+    monitorTables.forEach((table, tableIndex) => {
+        const canvas = document.getElementById(`monitor-chart-${tableIndex}`);
+        if (!canvas) {
+            if (monitorCharts[tableIndex]) {
+                monitorCharts[tableIndex].destroy();
+                delete monitorCharts[tableIndex];
+            }
+            return;
+        }
+        renderMonitorChart(tableIndex, canvas);
+    });
+}
+
+function renderMonitorChart(tableIndex, canvas) {
+    const table = monitorTables[tableIndex] || {};
+    const headers = table.headers || [];
+    const state = getMonitorTableState(tableIndex);
+    if (state.metricColumn === null) {
+        return;
+    }
+
+    const rows = getSortedMonitorRows(tableIndex, getFilteredMonitorRows(tableIndex))
+        .filter(row => isNumericValue(row[state.metricColumn]));
+    const grouped = new Map();
+    for (const row of rows) {
+        const groupKey = monitorSeriesKey(headers, row);
+        const timeLabel = monitorTimeLabel(headers, row);
+        if (!grouped.has(groupKey)) {
+            grouped.set(groupKey, new Map());
+        }
+        grouped.get(groupKey).set(timeLabel, Number(row[state.metricColumn]));
+    }
+
+    const labels = Array.from(new Set(rows.map(row => monitorTimeLabel(headers, row)))).sort();
+    const palette = ["#194d3f", "#8e2f1c", "#275b8f", "#806a15", "#7a3d82", "#2f6f73", "#9b4d12", "#4f5f2f", "#6c4a2f", "#3f7a45", "#8a3c52", "#5f5f5f"];
+    const datasets = Array.from(grouped.entries())
+        .sort((left, right) => right[1].size - left[1].size)
+        .slice(0, state.seriesLimit)
+        .map(([label, valueMap], index) => ({
+            label,
+            data: labels.map(timeLabel => valueMap.has(timeLabel) ? valueMap.get(timeLabel) : null),
+            borderColor: palette[index % palette.length],
+            backgroundColor: palette[index % palette.length],
+            pointRadius: 2,
+            borderWidth: 2,
+            tension: 0.2,
+            spanGaps: true,
+            hidden: state.hiddenSeries[label] === true
+        }));
+
+    if (monitorCharts[tableIndex]) {
+        monitorCharts[tableIndex].destroy();
+    }
+    monitorCharts[tableIndex] = new Chart(canvas, {
+        type: "line",
+        data: {labels, datasets},
+        options: {
+            responsive: true,
+            maintainAspectRatio: false,
+            animation: false,
+            interaction: {mode: "index", intersect: false},
+            plugins: {
+                legend: {
+                    position: "bottom",
+                    onClick: (event, legendItem, legend) => {
+                        const datasetIndex = legendItem.datasetIndex;
+                        const chart = legend.chart;
+                        const dataset = chart.data.datasets[datasetIndex];
+                        const shouldHide = chart.isDatasetVisible(datasetIndex);
+                        state.hiddenSeries[dataset.label] = shouldHide;
+                        chart.setDatasetVisibility(datasetIndex, !shouldHide);
+                        chart.update();
+                    }
+                },
+                tooltip: {callbacks: {title: items => items[0]?.label || ""}}
+            },
+            scales: {
+                x: {ticks: {maxRotation: 45, minRotation: 0, autoSkip: true, maxTicksLimit: 14}},
+                y: {beginAtZero: false}
+            }
+        }
+    });
+}
+
+function toDelimitedText(headers, rows, delimiter) {
+    const escapeCell = value => {
+        const text = String(value ?? "");
+        if (text.includes('"') || text.includes("\n") || text.includes("\r") || text.includes(delimiter)) {
+            return `"${text.replaceAll('"', '""')}"`;
+        }
+        return text;
+    };
+    return [headers, ...rows].map(row => row.map(escapeCell).join(delimiter)).join("\n");
+}
+
+async function copyMonitorTableTsv(tableIndex) {
+    const table = monitorTables[tableIndex] || {};
+    const headers = table.headers || [];
+    const rows = getSortedMonitorRows(tableIndex, getFilteredMonitorRows(tableIndex));
+    const text = toDelimitedText(headers, rows, "\t");
+    try {
+        await navigator.clipboard.writeText(text);
+        setWorkflowFeedback(`Copied ${rows.length} rows from ${table.filename || "monitor table"} as TSV.`);
+    } catch (error) {
+        setWorkflowFeedback("Clipboard copy failed. Browser permission may be required.", true);
+    }
+}
+
+function downloadMonitorTableCsv(tableIndex) {
+    const table = monitorTables[tableIndex] || {};
+    const headers = table.headers || [];
+    const rows = getSortedMonitorRows(tableIndex, getFilteredMonitorRows(tableIndex));
+    const csv = "\uFEFF" + toDelimitedText(headers, rows, ",");
+    const blob = new Blob([csv], {type: "text/csv;charset=utf-8"});
+    const url = URL.createObjectURL(blob);
+    const link = document.createElement("a");
+    link.href = url;
+    link.download = table.filename || "monitor-data.csv";
+    link.click();
+    URL.revokeObjectURL(url);
+}
+
 async function refreshTasks() {
     try {
         const response = await fetch("/api/tasks");
@@ -1005,6 +1512,10 @@ async function refreshTasks() {
         renderRunningTask(payload.runningTask);
         renderTaskHistory(payload.recentTasks || []);
         renderWorkflow(payload.workflowStatus);
+        if (isMonitorTabActive() && (!payload.runningTask || payload.runningTask.taskType !== "update-monitor-data")) {
+            await refreshMonitorFiles();
+            await refreshMonitorData();
+        }
     } catch (error) {
         console.error("Unable to refresh tasks", error);
     }
@@ -1028,6 +1539,31 @@ async function refreshReportBatches() {
     } catch (error) {
         console.error("Unable to refresh report batches", error);
     }
+}
+
+async function refreshMonitorFiles() {
+    try {
+        const response = await fetch("/api/tasks/monitor-files");
+        const payload = await response.json();
+        renderMonitorFiles(payload || []);
+    } catch (error) {
+        console.error("Unable to refresh monitor files", error);
+    }
+}
+
+async function refreshMonitorData() {
+    try {
+        const response = await fetch("/api/tasks/monitor-data?limit=10000");
+        const payload = await response.json();
+        renderMonitorData(payload || []);
+    } catch (error) {
+        console.error("Unable to refresh monitor data", error);
+    }
+}
+
+async function refreshMonitorAll() {
+    await refreshMonitorFiles();
+    await refreshMonitorData();
 }
 
 async function runQuery() {
@@ -1057,6 +1593,8 @@ refreshDerivedReportRanges();
 refreshTasks();
 refreshInputFiles();
 refreshReportBatches();
+refreshMonitorFiles();
+refreshMonitorData();
 setInterval(refreshTasks, 3000);
 </script>
 </body>

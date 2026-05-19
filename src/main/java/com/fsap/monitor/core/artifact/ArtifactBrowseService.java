@@ -11,6 +11,9 @@ import java.util.List;
 import java.util.stream.Collectors;
 import java.util.stream.Stream;
 
+import org.apache.commons.csv.CSVFormat;
+import org.apache.commons.csv.CSVParser;
+import org.apache.commons.csv.CSVRecord;
 import org.springframework.stereotype.Service;
 
 import com.fsap.monitor.core.service.ProjectPathService;
@@ -54,6 +57,15 @@ public class ArtifactBrowseService {
     public List<FileView> loadMonitorDataFiles() {
         Path monitorDir = projectPathService.reportOutputDir().resolve("monitor-data");
         return listFiles(monitorDir, 20);
+    }
+
+    public List<MonitorDataTableView> loadMonitorDataTables(int rowLimit) {
+        int effectiveLimit = Math.max(rowLimit, 1);
+        Path monitorDir = projectPathService.reportOutputDir().resolve("monitor-data");
+        return loadMonitorDataFiles().stream()
+                .filter(file -> file.filename().toLowerCase().endsWith(".csv"))
+                .map(file -> toMonitorDataTable(file, monitorDir.resolve(file.filename()), effectiveLimit))
+                .collect(Collectors.toList());
     }
 
     public List<FileView> loadInputExcelFiles() {
@@ -151,7 +163,49 @@ public class ArtifactBrowseService {
         }
     }
 
+    private MonitorDataTableView toMonitorDataTable(FileView file, Path csvFile, int rowLimit) {
+        if (!Files.isRegularFile(csvFile)) {
+            return new MonitorDataTableView(file.filename(), file.relativePath(), file.modifiedAt(), file.sizeBytes(), List.of(), List.of(), 0, false);
+        }
+
+        try {
+            String csvContent = Files.readString(csvFile);
+            if (!csvContent.isEmpty() && csvContent.charAt(0) == '\uFEFF') {
+                csvContent = csvContent.substring(1);
+            }
+            CSVParser parser = CSVParser.parse(csvContent, CSVFormat.DEFAULT.builder().setHeader().setSkipHeaderRecord(true).build());
+            List<String> headers = new ArrayList<>(parser.getHeaderNames());
+            List<List<String>> rows = new ArrayList<>();
+            int totalRows = 0;
+            for (CSVRecord record : parser) {
+                totalRows++;
+                if (rows.size() >= rowLimit) {
+                    continue;
+                }
+                List<String> row = new ArrayList<>();
+                for (String header : headers) {
+                    row.add(record.isMapped(header) ? record.get(header) : "");
+                }
+                rows.add(row);
+            }
+            return new MonitorDataTableView(file.filename(), file.relativePath(), file.modifiedAt(), file.sizeBytes(), headers, rows, totalRows, totalRows > rowLimit);
+        } catch (Exception exception) {
+            return new MonitorDataTableView(file.filename(), file.relativePath(), file.modifiedAt(), file.sizeBytes(), List.of("Error"), List.of(List.of(exception.getMessage())), 1, false);
+        }
+    }
+
     public record ReportBatchView(String batchName, String relativePath, String modifiedAt, List<FileView> files) { }
 
     public record FileView(String filename, String relativePath, long sizeBytes, String modifiedAt) { }
+
+    public record MonitorDataTableView(
+            String filename,
+            String relativePath,
+            String modifiedAt,
+            long sizeBytes,
+            List<String> headers,
+            List<List<String>> rows,
+            int rowCount,
+            boolean truncated
+    ) { }
 }

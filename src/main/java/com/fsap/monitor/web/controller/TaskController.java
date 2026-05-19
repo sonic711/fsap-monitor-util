@@ -117,6 +117,18 @@ public class TaskController {
         return artifactBrowseService.loadRecentReportBatches(3);
     }
 
+    @GetMapping("/monitor-files")
+    public java.util.List<ArtifactBrowseService.FileView> monitorFiles() {
+        return artifactBrowseService.loadMonitorDataFiles();
+    }
+
+    @GetMapping("/monitor-data")
+    public java.util.List<ArtifactBrowseService.MonitorDataTableView> monitorData(
+            @RequestParam(defaultValue = "10000") int limit
+    ) {
+        return artifactBrowseService.loadMonitorDataTables(limit);
+    }
+
     private void ensureWritable() {
         if (properties.getWeb().isReadonly()) {
             throw new ResponseStatusException(HttpStatus.FORBIDDEN, "Web task actions are disabled in readonly mode");

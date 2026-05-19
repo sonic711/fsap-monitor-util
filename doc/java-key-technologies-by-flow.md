@@ -109,11 +109,13 @@
 
 ### 2.3 前端互動現況
 
-- 技術：Thymeleaf + 原生 JavaScript
+- 技術：Thymeleaf + 原生 JavaScript + Chart.js
 - 模板位置：`src/main/resources/templates/query.html`
+- Chart.js 離線資源：`src/main/resources/static/vendor/chartjs/chart.umd.min.js`
 - 補充：
   - 目前專案沒有實際使用 HTMX
   - 模板中沒有 `hx-*` 屬性，也沒有 htmx script
+  - `Monitor Dashboard` 使用 Chart.js 直接在瀏覽器繪製 monitor CSV 趨勢折線圖，不依賴外部 CDN
 
 ---
 
@@ -308,9 +310,13 @@
 
 - 程式位置：
   - `src/main/java/com/fsap/monitor/core/monitor/MonitorDataExportService.java`
+  - `src/main/java/com/fsap/monitor/core/artifact/ArtifactBrowseService.java`
+  - `src/main/java/com/fsap/monitor/web/controller/TaskController.java`
+  - `src/main/resources/templates/query.html`
 - 用途：
   - 對指定 view 做查詢
   - 輸出 monitor 用 CSV / JS
+  - 讀取 monitor CSV，提供 Web UI 互動表格與 Chart.js 趨勢圖
 
 ---
 
@@ -488,7 +494,14 @@ Excel 報表中的數字欄位會套用：
 - `.csv`
 - `.js`
 
-供監控頁面或前端資產直接使用。
+供監控頁面或前端資產直接使用。Java Web UI 目前在 `Monitor Dashboard` 頁籤提供：
+
+- CSV / JS 下載連結
+- CSV 互動表格
+- 搜尋、欄位排序、分頁
+- TSV 複製與 CSV 下載
+- Chart.js 折線圖，依 `application / TARGET_IP / TARGET_PORT` 分組顯示 Top N series
+- legend 點擊隱藏狀態保留，避免 3 秒輪詢重繪後恢復
 
 ---
 
@@ -546,6 +559,14 @@ Excel 報表中的數字欄位會套用：
 5. `TaskController / QueryController / FileDownloadController`
 6. 對應 service 執行實際工作
 
+`Monitor Dashboard` 補充流程：
+
+1. `update-monitor-data` 產出 `04_report_output/monitor-data/*.csv` 與 `*.js`
+2. `ArtifactBrowseService` 掃描 monitor-data 檔案
+3. `TaskController` 提供 `/api/tasks/monitor-files` 與 `/api/tasks/monitor-data`
+4. `query.html` 讀取 JSON，渲染互動表格
+5. Chart.js 依所選數值欄位繪製趨勢圖
+
 ### 12.2 Ingest 流程
 
 1. 上傳 `.xlsx`
@@ -596,4 +617,3 @@ Excel 報表中的數字欄位會套用：
   - 先看 `ReportGenerationService.java`
 - Monitor data 匯出
   - 先看 `MonitorDataExportService.java`
-

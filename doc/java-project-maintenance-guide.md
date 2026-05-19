@@ -349,12 +349,37 @@ java -jar ... generate-report
 這時才需要改：
 
 - `MonitorDataExportService`
+- `ArtifactBrowseService`，如果 Web UI 需要讀取 / 預覽新的輸出格式
+- `TaskController`，如果需要新增 monitor 產物 API
+- `src/main/resources/templates/query.html`，如果 `Monitor Dashboard` 的表格或圖表呈現需要調整
+
+#### Web Dashboard 現況
+
+- `Monitor Dashboard` 是獨立頁籤，不放在 `Operations` 內。
+- `/api/tasks/monitor-files` 回傳 `monitor-data` 目錄中的 CSV / JS 下載清單。
+- `/api/tasks/monitor-data?limit=10000` 讀取 monitor CSV，回傳 headers、rows、rowCount 與 truncated 狀態。
+- UI 直接顯示 CSV 互動表格，支援搜尋、欄位排序、分頁、TSV 複製與 CSV 下載。
+- UI 使用內嵌 Chart.js 顯示趨勢折線圖，資源固定放在 `src/main/resources/static/vendor/chartjs/chart.umd.min.js`，避免部署時依賴 CDN。
+- 圖表 series 依 `application / TARGET_IP / TARGET_PORT` 分組；legend 點擊隱藏狀態會保留，避免輪詢刷新後又全部顯示。
 
 #### 驗證
 
 ```bash
 java -jar ... update-monitor-data
 ```
+
+Web UI 驗證時要用正確 base dir 啟動：
+
+```bash
+./gradlew bootRun --args='--fsap.paths.base-dir=fsap-month-report-develop serve --port 18080 --writable' --offline
+```
+
+再檢查：
+
+- `/api/tasks/monitor-files`
+- `/api/tasks/monitor-data?limit=10000`
+- `/vendor/chartjs/chart.umd.min.js`
+- `Monitor Dashboard` 頁籤中的圖表、legend 隱藏、表格搜尋與分頁
 
 ### 4.13 UI workflow / 任務順序變更
 
@@ -451,9 +476,9 @@ curl http://127.0.0.1:8080/...
 
 | Excel sheet / 來源檔 | source lake / 原始輸入 | 主要 view | 目前實際用途 |
 | :--- | :--- | :--- | :--- |
-| `RT_CNT` | `02_source_lake/RT_CNT/*.jsonl.gz` | `v_rt_cnt_clean` -> `v_rt_cnt_daily` -> `v_rt_cnt_monthly` / `v_rt_cnt_monthly_no_fac2fas` / `v_rt_cnt_weekly` / `v_rt_cnt_daily_with_tmspt` | **交易量總數主來源**，支撐 `2`、`2.1`、`3` 的峰日判定、`4`、`4.1`、`5`、`5.1`、`6` 的峰日判定、`7`、`7.1`、`7.2` |
-| `RT_TMSPT` | `02_source_lake/RT_TMSPT/*.jsonl.gz` | `v_rt_tmspt_clean` | **平均交易時間主來源**，目前直接支撐 `7`、`7.1`、`7.2`，也透過 `v_rt_cnt_daily_with_tmspt` 提供查詢用 |
-| `RT_PR_HH24` | `02_source_lake/RT_PR_HH24/*.jsonl.gz` | `v_rt_pr_hh24_clean` | **小時分佈主來源**，支撐 `1`、`3` / `3.1` 的小時分佈、`6` / `6.1` 的峰時分佈、`8` |
+| `RT_CNT` | `02_source_lake/RT_CNT/*.jsonl.gz` | `v_rt_cnt_clean` -> `v_rt_cnt_daily` -> `v_rt_cnt_monthly` / `v_rt_cnt_monthly_no_fac2fas` / `v_rt_cnt_weekly` / `v_rt_cnt_daily_with_tmspt` | 已 ingest 並保留查詢 / 後續擴充用；最新 SQL 報表交易量口徑已回到 `RT_PR_HH24` |
+| `RT_TMSPT` | `02_source_lake/RT_TMSPT/*.jsonl.gz` | `v_rt_tmspt_clean` | 已 ingest 並保留查詢用；最新 `7`、`7.1`、`7.2` 的平均處理時間改由 `RT_PR_HH24` 小時資料加權 |
+| `RT_PR_HH24` | `02_source_lake/RT_PR_HH24/*.jsonl.gz` | `v_rt_pr_hh24_clean` | **交易量 / 小時分佈 / 平均處理時間主來源**，支撐 `1`、`2`、`2.1`、`3`、`3.1`、`4`、`4.1`、`5`、`5.1`、`6`、`6.1`、`7`、`7.1`、`7.2`、`8` |
 | `RT_NODE_HH24` | `02_source_lake/RT_NODE_HH24/*.jsonl.gz` | `v_rt_node_hh24_clean` | 目前主要供查詢與後續擴充，**現行報表未直接使用** |
 | `BT_CNT` | `02_source_lake/BT_CNT/*.jsonl.gz` | 目前**沒有對應 view** | 已 ingest，但**現行 Java 報表與 monitor export 未使用** |
 | `MON_LOG` | `02_source_lake/MON_LOG/*.jsonl.gz` | `v_prod_monitor_log` -> `v_prod_monitor_daily_count` / `v_prod_monitor_daily_jvm_count` / `v_prod_monitor_hourly_count` / `v_prod_monitor_hourly_jvm_count` | `1.1`、`1.1.1` 報表，以及 `monitor-data` 匯出 |
@@ -468,17 +493,17 @@ curl http://127.0.0.1:8080/...
 
 | view | 主要下游報表 |
 | :--- | :--- |
-| `v_rt_pr_hh24_clean` | `1`、`3` / `3.1` 的小時分佈、`6` / `6.1` 的峰時分佈、`8` |
+| `v_rt_pr_hh24_clean` | `1`、`2`、`2.1`、`3`、`3.1`、`4`、`4.1`、`5`、`5.1`、`6`、`6.1`、`7`、`7.1`、`7.2`、`8` |
 | `v_prod_monitor_daily_count` | `1.1`、`1.1.1` |
 | `v_pr_info` | `7`、`7.1`、`7.2`、`8` |
 | `v_prod_monitor_daily_jvm_count` | 目前無報表直接使用，主要留給 monitor / 查詢 |
 | `v_prod_monitor_hourly_count` | 目前無報表直接使用，主要留給 monitor-data |
 | `v_prod_monitor_hourly_jvm_count` | 目前無報表直接使用，主要留給 monitor-data |
 | `v_prod_monitor_log` | 不直接進報表，透過 monitor 聚合 views 影響下游 |
-| `v_rt_cnt_clean` | `2`、`2.1`、`3` 的峰日判定、`4`、`4.1`、`5`、`5.1`、`6` 的峰日判定、`7`、`7.1`、`7.2` |
+| `v_rt_cnt_clean` | 目前主要留給查詢 / 後續擴充 |
 | `v_rt_cnt_daily*` / `v_rt_cnt_monthly*` / `v_rt_cnt_weekly` | 目前主要留給查詢 / 後續擴充 |
 | `v_rt_node_hh24_clean` | 目前無報表直接使用 |
-| `v_rt_tmspt_clean` | `7`、`7.1`、`7.2` 的平均處理時間 |
+| `v_rt_tmspt_clean` | 目前主要留給查詢 / 後續擴充 |
 
 ### 5.3 monitor-data 匯出對照
 

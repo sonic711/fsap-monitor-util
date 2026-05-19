@@ -288,10 +288,10 @@ java -jar fsap-monitor-util.jar update-monitor-data [--config PATH]
 #### 主要 service
 
 - `UpdateMonitorDataCommand`
-- `MonitorDataService`
-- `MonitorQueryBuilder`
-- `CsvOutputWriter`
-- `JsOutputWriter`
+- `MonitorDataExportService`
+- `ViewSyncService`
+- `DuckDbConnectionFactory`
+- `ArtifactBrowseService`
 
 #### 必保行為
 
@@ -299,6 +299,8 @@ java -jar fsap-monitor-util.jar update-monitor-data [--config PATH]
 - hourly 回溯 4 天
 - 輸出 CSV
 - 輸出 JS 包裝檔
+- Web UI 可從 `/api/tasks/monitor-files` 取得下載清單
+- Web UI 可從 `/api/tasks/monitor-data?limit=10000` 取得互動表格 / 圖表資料
 
 ---
 
@@ -378,10 +380,12 @@ java -jar fsap-monitor-util.jar doctor
 
 | 頁面 | 用途 |
 | :--- | :--- |
-| `query.html` | 主要 SQL 查詢頁 |
+| `query.html` | 主要 Web UI，包含 `Operations`、`Monitor Dashboard`、`Query Console` 頁籤 |
 | `fragments/result-table.html` | 查詢結果表格 |
 | `fragments/schema-tree.html` | schema 側欄 |
 | `fragments/history-list.html` | 查詢歷史 |
+
+`Monitor Dashboard` 目前直接放在 `query.html`，沒有拆獨立 template。它使用本機靜態資源 `static/vendor/chartjs/chart.umd.min.js`，提供 monitor CSV 互動表格與趨勢折線圖。
 
 ### 8.3 HTMX 使用範圍
 
