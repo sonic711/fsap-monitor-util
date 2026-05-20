@@ -44,6 +44,9 @@ public record ReportGenerationRequest(
         parameters.put("rangeEndTime", rangeEndTime);
         parameters.put("historyStartMonth", historyStartMonth);
         parameters.put("historyEndMonth", historyEndMonth);
+        parameters.put("previousTargetMonth", previousTargetMonth());
+        parameters.put("previousRangeStartTime", previousRangeStartTime());
+        parameters.put("previousRangeEndTime", previousRangeEndTime());
         return parameters;
     }
 
@@ -80,5 +83,18 @@ public record ReportGenerationRequest(
 
     private static String blankSafe(String value) {
         return value == null ? "" : value;
+    }
+
+    private String previousTargetMonth() {
+        return java.time.YearMonth.parse(targetMonth).minusMonths(1).toString();
+    }
+
+    private String previousRangeStartTime() {
+        return java.time.YearMonth.parse(targetMonth).minusMonths(1).atDay(1).atStartOfDay().format(java.time.format.DateTimeFormatter.ofPattern("yyyy-MM-dd HH:mm"));
+    }
+
+    private String previousRangeEndTime() {
+        java.time.YearMonth previousMonth = java.time.YearMonth.parse(targetMonth).minusMonths(1);
+        return previousMonth.atEndOfMonth().atTime(23, 59).format(java.time.format.DateTimeFormatter.ofPattern("yyyy-MM-dd HH:mm"));
     }
 }

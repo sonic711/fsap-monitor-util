@@ -279,6 +279,8 @@ java -jar ... sync-views
 - 若有新 placeholder，需改 `ReportGenerationRequest` / `ReportParameterDefaultsService`
 - 若分頁順序要變，檔名前綴要跟著調整
 - 若動到 Pivot 類報表，要考慮「無資料月份」時的行為
+- MOM / 月度比較報表可使用 `previousTargetMonth`、`previousRangeStartTime`、`previousRangeEndTime`，由 `targetMonth` 自動推導前一個月。
+- 若調整第 8 頁整月統計口徑，也要同步檢查 `v_monthly_transaction_stats`，目前 `8.3` 會直接使用這個 view。
 
 #### 驗證
 

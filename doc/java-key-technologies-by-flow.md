@@ -305,6 +305,7 @@
 - 用途：
   - 執行 `03_sql_logic/reports/*.sql`
   - 把查詢結果轉成 Excel sheet 與 CSV
+  - `8.3` MOM 報表會透過 `v_monthly_transaction_stats` 重用第 8 頁整月統計口徑
 
 #### Monitor Data 匯出
 
@@ -349,6 +350,8 @@
 3. 先 `DROP VIEW IF EXISTS`
 4. 逐輪重試建立 views
 
+目前 `v_monthly_transaction_stats` 是第 8 頁整月統計的 view 化版本，供 MOM / 月度比較報表重用；其峰日定義為每日平均處理時間最高日，峰時則取整月內小時交易量最高時段，同量時取較早日期與小時。
+
 ### 7.4 為什麼需要 retry round
 
 因為 view 之間有相依關係，單靠一次靜態排序不一定能 100% 解開所有依賴，所以保留多輪重試，直到：
@@ -383,6 +386,11 @@
 - `rangeEndDate`
 - `rangeStartTime`
 - `rangeEndTime`
+- `previousTargetMonth`
+- `previousRangeStartTime`
+- `previousRangeEndTime`
+
+`previous*` 參數供 MOM / 月度比較報表使用，會以 `targetMonth` 的前一個月推導。
 
 ---
 

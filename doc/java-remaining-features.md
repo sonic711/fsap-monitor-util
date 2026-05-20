@@ -54,7 +54,11 @@
   - `rangeEndTime`
   - `historyStartMonth`
   - `historyEndMonth`
+  - `previousTargetMonth`
+  - `previousRangeStartTime`
+  - `previousRangeEndTime`
 - `reports/*.sql` 已改為 placeholder render，不必再手改硬編碼月份 / 日期
+- `v_monthly_transaction_stats` 已提供第 8 頁整月統計口徑，供 `8.3` MOM 報表重用
 - 每次產出批次會保存 `report-params.json`
 - 顯示目前執行中的任務狀態
 - 顯示最近 UI 任務執行結果

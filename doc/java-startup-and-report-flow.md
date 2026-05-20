@@ -152,6 +152,7 @@ java -jar build/libs/fsap-monitor-util-0.1.0-SNAPSHOT.jar \
 
 - 載入 `03_sql_logic/reports/*.sql`
 - 執行所有報表 SQL
+- 產報前會同步 `03_sql_logic/views/*.sql`，因此 `8.3` 可直接使用 `v_monthly_transaction_stats`
 - 輸出 Excel 與各項 CSV
 
 輸出位置：

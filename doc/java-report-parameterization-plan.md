@@ -91,7 +91,7 @@
 
 - `targetMonth`
   - 格式：`YYYY-MM`
-  - 用途：當月報表、峰日峰時、交易類別統計
+  - 用途：當月報表、峰日峰時、交易類別統計、MOM 本月
 
 - `rangeStartDate`
   - 格式：`YYYY-MM-DD`
@@ -121,6 +121,21 @@
   - 格式：`YYYY-MM`
   - 用途：歷史月總量 / 歷史峰日 / 歷史峰日峰時結束月份
 
+- `previousTargetMonth`
+  - 格式：`YYYY-MM`
+  - 用途：MOM / 月度比較報表的前一個月
+  - 備註：由 `targetMonth` 自動往前推一個月
+
+- `previousRangeStartTime`
+  - 格式：`YYYY-MM-DD HH:mm`
+  - 用途：月度比較詳細報表的前一月起始時間
+  - 備註：由 `previousTargetMonth` 自動推導
+
+- `previousRangeEndTime`
+  - 格式：`YYYY-MM-DD HH:mm`
+  - 用途：月度比較詳細報表的前一月結束時間
+  - 備註：由 `previousTargetMonth` 自動推導
+
 - `targetCategory`
   - 值域：`all | update | query`
   - 用途：所有交易類別 / TOP6 交易類 / TOP6 查詢類 / 詳細資訊
@@ -139,6 +154,7 @@
   - 影響分頁：`7.交易量統計-所有交易類別`
   - 影響分頁：`7.1.交易量統計-TOP6交易類`
   - 影響分頁：`7.2.交易量統計-TOP6查詢類`
+  - 影響分頁：`8.3.交易量統計-MOM交易量比較`
 
 - `rangeStartDate` / `rangeEndDate`
   - 影響分頁：`1.1.CPU-MEM監控`
@@ -154,6 +170,15 @@
 
 - `rangeStartTime` / `rangeEndTime`
   - 影響分頁：`8.交易量統計-所有交易類別-詳細資訊`
+  - 影響分頁：`8.1.交易量統計-月度比較-所有交易類別-詳細資訊`
+  - 影響分頁：`8.2.交易量統計-月度比較-所有交易類別-簡易比較`
+
+- `previousTargetMonth`
+  - 影響分頁：`8.3.交易量統計-MOM交易量比較`
+
+- `previousRangeStartTime` / `previousRangeEndTime`
+  - 影響分頁：`8.1.交易量統計-月度比較-所有交易類別-詳細資訊`
+  - 影響分頁：`8.2.交易量統計-月度比較-所有交易類別-簡易比較`
 
 ## 5.2 預設聯動規則
 

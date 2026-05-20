@@ -59,18 +59,29 @@ PeakDayStats AS (
     FROM BaseDaily
 ),
 PeakHourStats AS (
-    -- 步驟 4.5：找出峰時與發生時間
+    -- 步驟 4.5：找出峰時與發生時間；同交易量時取最早發生時間，避免 arg_max tie 不穩定。
     SELECT 
-        t.PR_ID,
-        MAX(t.tx_cnt) AS peak_hour_cnt,
-        arg_max(t.tx_dt_str, t.tx_cnt) AS peak_hour_dt, 
-        arg_max(t.tx_hour, t.tx_cnt) AS peak_hour_hr    
-    FROM v_rt_pr_hh24_clean t
-    CROSS JOIN params p
-    WHERE t.tx_dt_str BETWEEN SUBSTRING(p.StartTime, 1, 10) AND SUBSTRING(p.EndTime, 1, 10)
-      AND t.tx_dt_str || ' ' || LPAD(CAST(t.tx_hour AS VARCHAR), 2, '0') || ':00' BETWEEN p.StartTime AND p.EndTime
-      AND t.PR_ID NOT IN (SELECT PR_ID FROM Exclude_PR_ID)
-    GROUP BY t.PR_ID
+        PR_ID,
+        tx_cnt AS peak_hour_cnt,
+        tx_dt_str AS peak_hour_dt,
+        tx_hour AS peak_hour_hr
+    FROM (
+        SELECT
+            t.PR_ID,
+            t.tx_dt_str,
+            t.tx_hour,
+            t.tx_cnt,
+            ROW_NUMBER() OVER (
+                PARTITION BY t.PR_ID
+                ORDER BY t.tx_cnt DESC, t.tx_dt_str ASC, t.tx_hour ASC
+            ) AS rn
+        FROM v_rt_pr_hh24_clean t
+        CROSS JOIN params p
+        WHERE t.tx_dt_str BETWEEN SUBSTRING(p.StartTime, 1, 10) AND SUBSTRING(p.EndTime, 1, 10)
+          AND t.tx_dt_str || ' ' || LPAD(CAST(t.tx_hour AS VARCHAR), 2, '0') || ':00' BETWEEN p.StartTime AND p.EndTime
+          AND t.PR_ID NOT IN (SELECT PR_ID FROM Exclude_PR_ID)
+    ) ranked
+    WHERE rn = 1
 )
 
 -- 步驟 5：組合所有數據
