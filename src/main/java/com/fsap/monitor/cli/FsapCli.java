@@ -2,6 +2,7 @@ package com.fsap.monitor.cli;
 
 import org.springframework.stereotype.Component;
 
+import com.fsap.monitor.cli.command.DownloadInputCommand;
 import com.fsap.monitor.cli.command.DoctorCommand;
 import com.fsap.monitor.cli.command.GenerateReportCommand;
 import com.fsap.monitor.cli.command.IngestCommand;
@@ -21,6 +22,7 @@ import picocli.CommandLine.Command;
         description = "FSAP monitor utility CLI",
         subcommands = {
                 DoctorCommand.class,
+                DownloadInputCommand.class,
                 IngestCommand.class,
                 SyncViewsCommand.class,
                 GenerateReportCommand.class,
