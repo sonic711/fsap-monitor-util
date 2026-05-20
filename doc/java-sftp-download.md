@@ -76,6 +76,28 @@ download-input \
 4. 找到第一個包含目標檔名的目錄後下載
 5. 檔案寫入 `ProjectPathService.inputDir()`
 
+## Log
+
+SFTP 下載會同時輸出 console log 與執行紀錄檔：
+
+```text
+{fsap.paths.base-dir}/logs/sftp_download.log
+```
+
+正式部署若使用：
+
+```bash
+--fsap.paths.base-dir=/app/fsap-monitor-util/fsap-month-report-develop
+```
+
+則 log 會寫在：
+
+```text
+/app/fsap-monitor-util/fsap-month-report-develop/logs/sftp_download.log
+```
+
+log 會記錄下載開始、連線目標、掃描目錄數、命中的遠端檔案、下載成功位置與失敗原因。紀錄中只會寫入 `remote.url` 與 `remote.username`，不會寫入密碼或解密後的 `remote.code`。
+
 ## 後續流程
 
 下載完成後可接續執行：

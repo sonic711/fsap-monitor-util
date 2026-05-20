@@ -1,11 +1,15 @@
 package com.fsap.monitor.core.sftp;
 
+import java.io.BufferedWriter;
 import java.io.OutputStream;
+import java.nio.charset.StandardCharsets;
 import java.nio.file.Files;
 import java.nio.file.Path;
 import java.nio.file.StandardCopyOption;
+import java.nio.file.StandardOpenOption;
 import java.time.Clock;
 import java.time.LocalDate;
+import java.time.LocalDateTime;
 import java.time.ZoneId;
 import java.time.format.DateTimeFormatter;
 import java.util.Comparator;
@@ -14,6 +18,8 @@ import java.util.regex.Pattern;
 
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.stereotype.Service;
+import org.slf4j.Logger;
+import org.slf4j.LoggerFactory;
 
 import com.fsap.monitor.core.service.ProjectPathService;
 import com.fsap.monitor.sftp.config.EncryptConfiguration;
@@ -28,11 +34,15 @@ import com.fsap.monitor.sftp.vo.RemoteInfo;
  */
 public class SftpInputDownloadService {
 
+    private static final Logger LOGGER = LoggerFactory.getLogger(SftpInputDownloadService.class);
+
     private static final ZoneId DEFAULT_ZONE = ZoneId.of("Asia/Taipei");
     private static final DateTimeFormatter FILE_DATE_FORMAT = DateTimeFormatter.BASIC_ISO_DATE;
+    private static final DateTimeFormatter LOG_DATE_TIME_FORMAT = DateTimeFormatter.ofPattern("yyyy-MM-dd HH:mm:ss");
     private static final String DEFAULT_REMOTE_ROOT = "/FSAP/FILE_BCKP";
     private static final String DAILY_FILE_PREFIX = "FSAP每日交易統計";
     private static final String DAILY_FILE_EXTENSION = ".xlsx";
+    private static final String SFTP_LOG_FILE = "sftp_download.log";
     private static final Pattern ROC_BACKUP_DIRECTORY = Pattern.compile("^0\\d{7}$");
 
     private final RemoteInfo remoteInfo;
@@ -64,8 +74,17 @@ public class SftpInputDownloadService {
         Path localFile = localDirectory.resolve(filename).normalize();
 
         if (!localFile.startsWith(localDirectory)) {
-            throw new IllegalArgumentException("Invalid target filename: " + filename);
+            String message = "Invalid target filename: " + filename;
+            logExecution("FAILED " + message);
+            throw new IllegalArgumentException(message);
         }
+
+        logExecution("START filename=" + filename
+                + ", remoteRoot=" + remoteRoot
+                + ", localDirectory=" + localDirectory
+                + ", overwrite=" + request.overwrite()
+                + ", remoteUrl=" + remoteInfo.getUrl()
+                + ", username=" + remoteInfo.getUsername());
 
         try {
             Files.createDirectories(localDirectory);
@@ -74,9 +93,12 @@ public class SftpInputDownloadService {
             }
 
             try (FileTransfer transfer = FileTransferUtils.newInstance(decryptedRemoteInfo())) {
+                logExecution("CONNECT remoteUrl=" + remoteInfo.getUrl() + ", username=" + remoteInfo.getUsername());
                 transfer.connection();
+                logExecution("CONNECTED remoteUrl=" + remoteInfo.getUrl());
                 transfer.cd(remoteRoot);
                 List<FileEntry> directories = sortedBackupDirectories(transfer.ls());
+                logExecution("SCAN remoteRoot=" + remoteRoot + ", candidateDirectories=" + directories.size());
                 for (FileEntry directory : directories) {
                     String directoryName = directory.getFileName();
                     transfer.cd(remoteRoot + "/" + directoryName);
@@ -84,25 +106,48 @@ public class SftpInputDownloadService {
                         continue;
                     }
 
+                    String remotePath = remoteRoot + "/" + directoryName + "/" + filename;
+                    logExecution("MATCH remotePath=" + remotePath);
                     Path tempFile = localDirectory.resolve(filename + ".downloading").normalize();
                     try (OutputStream outputStream = Files.newOutputStream(tempFile)) {
                         transfer.get(filename, outputStream);
                     }
                     Files.move(tempFile, localFile, StandardCopyOption.REPLACE_EXISTING);
-                    return new DownloadResult(filename, remoteRoot + "/" + directoryName + "/" + filename, localFile, directoryName);
+                    logExecution("SUCCESS remotePath=" + remotePath + ", localPath=" + localFile);
+                    return new DownloadResult(filename, remotePath, localFile, directoryName);
                 }
             }
         } catch (Exception exception) {
-            throw new IllegalStateException(
-                    "Unable to download input file from SFTP: filename=" + filename
-                            + ", remoteRoot=" + remoteRoot
-                            + ", localDirectory=" + localDirectory
-                            + ", cause=" + rootCauseMessage(exception),
-                    exception
-            );
+            String message = "Unable to download input file from SFTP: filename=" + filename
+                    + ", remoteRoot=" + remoteRoot
+                    + ", localDirectory=" + localDirectory
+                    + ", cause=" + rootCauseMessage(exception);
+            logExecution("FAILED " + message);
+            throw new IllegalStateException(message, exception);
         }
 
-        throw new IllegalStateException("Remote file not found under " + remoteRoot + ": " + filename);
+        String message = "Remote file not found under " + remoteRoot + ": " + filename;
+        logExecution("FAILED " + message);
+        throw new IllegalStateException(message);
+    }
+
+    private void logExecution(String message) {
+        LOGGER.info(message);
+        try {
+            Files.createDirectories(projectPathService.logDir());
+            Path logFile = projectPathService.logDir().resolve(SFTP_LOG_FILE);
+            try (BufferedWriter writer = Files.newBufferedWriter(
+                    logFile,
+                    StandardCharsets.UTF_8,
+                    StandardOpenOption.CREATE,
+                    StandardOpenOption.APPEND
+            )) {
+                writer.write(LocalDateTime.now(clock).format(LOG_DATE_TIME_FORMAT) + " " + message);
+                writer.newLine();
+            }
+        } catch (Exception exception) {
+            LOGGER.warn("Unable to write SFTP download log", exception);
+        }
     }
 
     private String rootCauseMessage(Throwable throwable) {
