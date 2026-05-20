@@ -14,6 +14,7 @@ import java.sql.ResultSetMetaData;
 import java.sql.SQLException;
 import java.sql.Statement;
 import java.time.LocalDateTime;
+import java.time.YearMonth;
 import java.time.format.DateTimeFormatter;
 import java.util.ArrayList;
 import java.util.Comparator;
@@ -57,7 +58,21 @@ public class ReportGenerationService {
     private static final String REPORT_LOG_FILE = "report_execution.log";
     private static final String REPORT_PARAMS_FILE = "report-params.json";
     private static final String NO_DATA_MESSAGE_HEADER = "Message";
-    private static final String WORKBOOK_PREFIX = "維運月度報表_彙總_";
+    private static final String WORKBOOK_PREFIX = "維運月度報表_";
+    private static final String[] CHINESE_MONTH_NAMES = {
+            "一月",
+            "二月",
+            "三月",
+            "四月",
+            "五月",
+            "六月",
+            "七月",
+            "八月",
+            "九月",
+            "十月",
+            "十一月",
+            "十二月"
+    };
     private static final Pattern REPORT_ORDER_PREFIX = Pattern.compile("^(\\d+(?:\\.\\d+)*)\\.?\\s*");
     private static final Pattern REPORT_PARAMETER_PATTERN = Pattern.compile("\\$\\{([a-zA-Z][a-zA-Z0-9]*)}");
     private static final String INTEGER_NUMBER_FORMAT = "#,##0";
@@ -93,7 +108,7 @@ public class ReportGenerationService {
                 : LocalDateTime.now().format(TIMESTAMP_FORMAT);
 
         Path runDirectory = projectPathService.reportOutputDir().resolve(timestamp);
-        Path workbookPath = runDirectory.resolve(WORKBOOK_PREFIX + timestamp + ".xlsx");
+        Path workbookPath = runDirectory.resolve(workbookFileName(effectiveRequest, timestamp));
         Path parametersFile = runDirectory.resolve(REPORT_PARAMS_FILE);
 
         try {
@@ -173,6 +188,12 @@ public class ReportGenerationService {
         }
 
         return new ReportGenerationResult(timestamp, runDirectory, workbookPath, parametersFile, effectiveRequest, reportResults, failures);
+    }
+
+    private String workbookFileName(ReportGenerationRequest request, String timestamp) {
+        YearMonth targetMonth = YearMonth.parse(request.targetMonth());
+        String reportMonthName = CHINESE_MONTH_NAMES[targetMonth.getMonthValue() - 1];
+        return WORKBOOK_PREFIX + reportMonthName + "彙總_" + timestamp + ".xlsx";
     }
 
     private List<Path> scanReportFiles() {
