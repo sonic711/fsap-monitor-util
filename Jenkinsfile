@@ -1,0 +1,201 @@
+import groovy.transform.Field
+
+@Field String remoteUser = 'apuser'
+@Field String installDir = '/app/fsap-monitor-util'
+@Field String jarName = 'fsap-monitor-util-0.1.0-SNAPSHOT.jar'
+@Field String baseDir = '/app/fsap-monitor-util/fsap-month-report-develop'
+@Field String sshOptions = '-o BatchMode=yes -o StrictHostKeyChecking=accept-new'
+
+def hasTargetHost() {
+    return params.TARGET_HOST?.trim()
+}
+
+def hasTargetHostParameter() {
+    return params.containsKey('TARGET_HOST')
+}
+
+def runRemote(String label, String remoteScript) {
+    def scriptText = [
+        '#!/bin/bash',
+        'set -euo pipefail',
+        '',
+        "ssh ${sshOptions} \"${remoteUser}@${params.TARGET_HOST}\" 'bash -se' <<'REMOTE_SCRIPT'",
+        remoteScript.stripIndent().trim(),
+        'REMOTE_SCRIPT',
+        ''
+    ].join('\n')
+
+    sh(
+        label: label,
+        script: scriptText
+    )
+}
+
+def fsapCommand(String command) {
+    return [
+        "cd \"${installDir}\"",
+        "/app/java/java17/bin/java -jar \"${installDir}/${jarName}\" --fsap.paths.base-dir=\"${baseDir}\" ${command}"
+    ].join('\n')
+}
+
+pipeline {
+    agent any
+
+    options {
+        timestamps()
+        disableConcurrentBuilds()
+    }
+
+    stages {
+        stage('Initialize Parameters') {
+            when {
+                expression {
+                    return !hasTargetHostParameter()
+                }
+            }
+            steps {
+                script {
+                    properties([
+                        parameters([
+                            string(name: 'TARGET_HOST', defaultValue: '', description: 'Target host IP for apuser SSH login')
+                        ])
+                    ])
+                    echo 'Jenkins job parameters have been generated. Fill TARGET_HOST, then run Build with Parameters.'
+                }
+            }
+        }
+
+        stage('Target Host Required') {
+            when {
+                expression {
+                    return hasTargetHostParameter() && !hasTargetHost()
+                }
+            }
+            steps {
+                echo 'TARGET_HOST is empty. Fill TARGET_HOST, then run Build with Parameters.'
+            }
+        }
+
+        stage('0. SSH Target Host') {
+            when {
+                expression {
+                    return hasTargetHost()
+                }
+            }
+            steps {
+                script {
+                    runRemote('SSH to target host', """#!/bin/bash
+                    set -euo pipefail
+
+                    echo "Connected to \$(hostname) as \$(whoami)"
+                    test -d "${installDir}"
+                    test -f "${installDir}/${jarName}"
+                    test -d "${baseDir}"
+                    """)
+                }
+            }
+        }
+
+        stage('1. Check') {
+            when {
+                expression {
+                    return hasTargetHost()
+                }
+            }
+            steps {
+                script {
+                    runRemote('Run environment checks', """#!/bin/bash
+                    set -euo pipefail
+
+                    ${fsapCommand('doctor')}
+                    """)
+                }
+            }
+        }
+
+        stage('2. Download Latest Transaction Report') {
+            when {
+                expression {
+                    return hasTargetHost()
+                }
+            }
+            steps {
+                script {
+                    runRemote('Download latest transaction report', """#!/bin/bash
+                    set -euo pipefail
+
+                    ${fsapCommand('download-input')}
+                    """)
+                }
+            }
+        }
+
+        stage('3. Ingest') {
+            when {
+                expression {
+                    return hasTargetHost()
+                }
+            }
+            steps {
+                script {
+                    runRemote('Ingest one input file', """#!/bin/bash
+                    set -euo pipefail
+
+                    ${fsapCommand('ingest --limit 1')}
+                    """)
+                }
+            }
+        }
+
+        stage('4. Sync Views') {
+            when {
+                expression {
+                    return hasTargetHost()
+                }
+            }
+            steps {
+                script {
+                    runRemote('Import views', """#!/bin/bash
+                    set -euo pipefail
+
+                    ${fsapCommand('sync-views')}
+                    """)
+                }
+            }
+        }
+
+        stage('5. Generate Report') {
+            when {
+                expression {
+                    return hasTargetHost()
+                }
+            }
+            steps {
+                script {
+                    runRemote('Generate report', """#!/bin/bash
+                    set -euo pipefail
+
+                    ${fsapCommand('generate-report')}
+                    """)
+                }
+            }
+        }
+    }
+
+    post {
+        success {
+            script {
+                if (hasTargetHost()) {
+                    echo "Report flow completed on ${remoteUser}@${params.TARGET_HOST}"
+                } else if (hasTargetHostParameter()) {
+                    echo 'TARGET_HOST is empty. Re-run this job with TARGET_HOST.'
+                } else {
+                    echo 'Jenkins parameters are ready. Re-run this job with TARGET_HOST.'
+                }
+            }
+        }
+        failure {
+            echo "Report flow failed. Check Jenkins console output and remote logs under ${baseDir}/logs."
+        }
+    }
+}
