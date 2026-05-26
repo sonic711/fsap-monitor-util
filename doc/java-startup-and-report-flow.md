@@ -169,7 +169,7 @@ java -jar build/libs/fsap-monitor-util-0.1.0-SNAPSHOT.jar \
 
 該批次目錄內通常會有：
 
-- `維運月度報表_<報表月份>彙總_YYYYMMDDHHMM.xlsx`，例如 `targetMonth=2026-04` 時為 `維運月度報表_四月彙總_YYYYMMDDHHMM.xlsx`
+- `維運月度報表_<報表月份>彙總_YYYYMMDDHHMM.xlsx`，例如 `targetMonth=2026-04` 時為 `維運月度報表_04月彙總_YYYYMMDDHHMM.xlsx`
 - 各報表對應的 `.csv`
 
 如果你要指定批次時間戳：
