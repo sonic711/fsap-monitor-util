@@ -141,7 +141,7 @@ pipeline {
                     runRemote('Ingest one input file', """#!/bin/bash
                     set -euo pipefail
 
-                    ${fsapCommand('ingest --limit 1')}
+                    ${fsapCommand('ingest --limit 3')}
                     """)
                 }
             }
