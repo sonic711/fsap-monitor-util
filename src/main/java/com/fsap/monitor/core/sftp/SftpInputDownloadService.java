@@ -21,6 +21,7 @@ import org.springframework.stereotype.Service;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
+import com.fasterxml.jackson.databind.ObjectMapper;
 import com.fsap.monitor.core.service.ProjectPathService;
 import com.fsap.monitor.sftp.config.EncryptConfiguration;
 import com.fsap.monitor.sftp.transfer.FileEntry;
@@ -43,20 +44,23 @@ public class SftpInputDownloadService {
     private static final String DAILY_FILE_PREFIX = "FSAP每日交易統計";
     private static final String DAILY_FILE_EXTENSION = ".xlsx";
     private static final String SFTP_LOG_FILE = "sftp_download.log";
+    private static final String LATEST_DOWNLOAD_METADATA_FILE = "latest-sftp-download.json";
     private static final Pattern ROC_BACKUP_DIRECTORY = Pattern.compile("^0\\d{7}$");
 
     private final RemoteInfo remoteInfo;
     private final ProjectPathService projectPathService;
+    private final ObjectMapper objectMapper;
     private final Clock clock;
 
     @Autowired
-    public SftpInputDownloadService(RemoteInfo remoteInfo, ProjectPathService projectPathService) {
-        this(remoteInfo, projectPathService, Clock.system(DEFAULT_ZONE));
+    public SftpInputDownloadService(RemoteInfo remoteInfo, ProjectPathService projectPathService, ObjectMapper objectMapper) {
+        this(remoteInfo, projectPathService, objectMapper, Clock.system(DEFAULT_ZONE));
     }
 
-    SftpInputDownloadService(RemoteInfo remoteInfo, ProjectPathService projectPathService, Clock clock) {
+    SftpInputDownloadService(RemoteInfo remoteInfo, ProjectPathService projectPathService, ObjectMapper objectMapper, Clock clock) {
         this.remoteInfo = remoteInfo;
         this.projectPathService = projectPathService;
+        this.objectMapper = objectMapper;
         this.clock = clock;
     }
 
@@ -114,7 +118,9 @@ public class SftpInputDownloadService {
                     }
                     Files.move(tempFile, localFile, StandardCopyOption.REPLACE_EXISTING);
                     logExecution("SUCCESS remotePath=" + remotePath + ", localPath=" + localFile);
-                    return new DownloadResult(filename, remotePath, localFile, directoryName);
+                    DownloadResult result = new DownloadResult(filename, remotePath, localFile, directoryName);
+                    writeLatestDownloadMetadata(result);
+                    return result;
                 }
             }
         } catch (Exception exception) {
@@ -129,6 +135,38 @@ public class SftpInputDownloadService {
         String message = "Remote file not found under " + remoteRoot + ": " + filename;
         logExecution("FAILED " + message);
         throw new IllegalStateException(message);
+    }
+
+    private void writeLatestDownloadMetadata(DownloadResult result) {
+        Path metadataFile = latestDownloadMetadataFile();
+        LatestDownloadMetadata metadata = new LatestDownloadMetadata(
+                result.filename(),
+                result.remotePath(),
+                remoteDirectory(result.remotePath()),
+                result.localPath().toString(),
+                result.matchedDirectory(),
+                LocalDateTime.now(clock).format(LOG_DATE_TIME_FORMAT)
+        );
+        try {
+            Files.createDirectories(metadataFile.getParent());
+            objectMapper.writerWithDefaultPrettyPrinter().writeValue(metadataFile.toFile(), metadata);
+            logExecution("METADATA path=" + metadataFile);
+        } catch (Exception exception) {
+            logExecution("FAILED unable to write latest download metadata: " + rootCauseMessage(exception));
+            throw new IllegalStateException("Unable to write latest SFTP download metadata: " + metadataFile, exception);
+        }
+    }
+
+    private String remoteDirectory(String remotePath) {
+        int separator = remotePath.lastIndexOf('/');
+        if (separator <= 0) {
+            throw new IllegalStateException("Unable to derive remote directory from path: " + remotePath);
+        }
+        return remotePath.substring(0, separator);
+    }
+
+    public Path latestDownloadMetadataFile() {
+        return projectPathService.logDir().resolve(LATEST_DOWNLOAD_METADATA_FILE);
     }
 
     private void logExecution(String message) {
@@ -193,6 +231,16 @@ public class SftpInputDownloadService {
             String remotePath,
             Path localPath,
             String matchedDirectory
+    ) {
+    }
+
+    public record LatestDownloadMetadata(
+            String filename,
+            String remotePath,
+            String remoteDirectory,
+            String localPath,
+            String matchedDirectory,
+            String downloadedAt
     ) {
     }
 }

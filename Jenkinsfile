@@ -180,6 +180,23 @@ pipeline {
                 }
             }
         }
+
+        stage('6. Upload Report') {
+            when {
+                expression {
+                    return hasTargetHost()
+                }
+            }
+            steps {
+                script {
+                    runRemote('Upload report to SFTP', """#!/bin/bash
+                    set -euo pipefail
+
+                    ${fsapCommand('upload-report')}
+                    """)
+                }
+            }
+        }
     }
 
     post {

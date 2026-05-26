@@ -188,7 +188,58 @@ java -jar build/libs/fsap-monitor-util-0.1.0-SNAPSHOT.jar \
   generate-report --continue-on-error
 ```
 
-## 5. 監控資料輸出流程
+### Step 5. 上傳月報表到 SFTP
+
+```bash
+java -jar build/libs/fsap-monitor-util-0.1.0-SNAPSHOT.jar \
+  --fsap.paths.base-dir=fsap-month-report-develop \
+  upload-report
+```
+
+用途：
+
+- 預設尋找 `04_report_output/<最新批次>/` 底下最新的 `.xlsx` 報表
+- 讀取 `logs/latest-sftp-download.json`
+- 將報表上傳到最近一次 `download-input` 找到原始 Excel 的同一個 SFTP 目錄
+
+完整主線流程中，`download-input` 成功後會記錄最近一次下載來源，例如：
+
+```json
+{
+  "filename": "FSAP每日交易統計20260526.xlsx",
+  "remotePath": "/FSAP/FILE_BCKP/01150526/FSAP每日交易統計20260526.xlsx",
+  "remoteDirectory": "/FSAP/FILE_BCKP/01150526",
+  "localPath": ".../01_excel_input/FSAP每日交易統計20260526.xlsx",
+  "matchedDirectory": "01150526",
+  "downloadedAt": "2026-05-26 10:00:00"
+}
+```
+
+因此報表會上傳到同一個 `remoteDirectory`，例如：
+
+```text
+/FSAP/FILE_BCKP/01150526/維運月度報表_05月彙總_202606010930.xlsx
+```
+
+如果要手動指定檔案或目錄：
+
+```bash
+java -jar build/libs/fsap-monitor-util-0.1.0-SNAPSHOT.jar \
+  --fsap.paths.base-dir=fsap-month-report-develop \
+  upload-report \
+  --local-file 04_report_output/202606010930/維運月度報表_05月彙總_202606010930.xlsx \
+  --remote-dir /FSAP/FILE_BCKP/01150526
+```
+
+如果遠端已有同名報表，預設會停止；需要覆蓋時加上：
+
+```bash
+java -jar build/libs/fsap-monitor-util-0.1.0-SNAPSHOT.jar \
+  --fsap.paths.base-dir=fsap-month-report-develop \
+  upload-report --overwrite
+```
+
+## 6. 監控資料輸出流程
 
 如果除了報表外，還要產生 dashboard 用的監控資料：
 

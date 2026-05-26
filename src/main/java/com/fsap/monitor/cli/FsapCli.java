@@ -9,6 +9,7 @@ import com.fsap.monitor.cli.command.IngestCommand;
 import com.fsap.monitor.cli.command.ServeCommand;
 import com.fsap.monitor.cli.command.SyncViewsCommand;
 import com.fsap.monitor.cli.command.UpdateMonitorDataCommand;
+import com.fsap.monitor.cli.command.UploadReportCommand;
 
 import picocli.CommandLine.Command;
 
@@ -26,6 +27,7 @@ import picocli.CommandLine.Command;
                 IngestCommand.class,
                 SyncViewsCommand.class,
                 GenerateReportCommand.class,
+                UploadReportCommand.class,
                 UpdateMonitorDataCommand.class,
                 ServeCommand.class
         }
