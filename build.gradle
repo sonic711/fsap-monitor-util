@@ -6,6 +6,7 @@ buildscript {
 
     def offlineRepoPath = gradle.startParameter.projectProperties['offlineRepo'] ?: System.getProperty('offlineRepo')
     repositories {
+        mavenLocal()
         if (offlineRepoPath) {
             maven { url = uri(offlineRepoPath) }
         }
@@ -35,6 +36,7 @@ java {
 def offlineRepoPath = gradle.startParameter.projectProperties['offlineRepo'] ?: System.getProperty('offlineRepo')
 
 repositories {
+    mavenLocal()
     if (offlineRepoPath) {
         maven { url = uri(offlineRepoPath) }
     }

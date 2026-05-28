@@ -1,6 +1,6 @@
 # Java 報表日期參數化與 UI/CLI 共用方案
 
-更新日期：2026-04-27
+更新日期：2026-05-26
 
 ## 0. 目前狀態
 
@@ -28,11 +28,11 @@
 - `StartYM = '2025-09'`
 - `EndYM = '2026-04'`
 
-這代表：
+導入參數化前的問題是：
 
 - 若要改統計月份，必須直接修改 SQL 檔
-- Web UI 目前不能調整這些日期參數
-- CLI 目前也不能透過 `generate-report` 傳入這些日期參數
+- Web UI 不能調整這些日期參數
+- CLI 不能透過 `generate-report` 傳入這些日期參數
 - 同一份 SQL 若被臨時改掉，之後容易忘記改回來
 
 ## 2. 目標
@@ -404,4 +404,4 @@ java -jar build/libs/fsap-monitor-util-0.1.0-SNAPSHOT.jar \
 - SQL 不再需要為了每次報表去手動改檔
 - 每次執行可保留參數紀錄，便於追溯
 
-目前狀態：**本文件僅為建議方案，尚未開始實作。**
+目前狀態：**第一版已完成實作。** UI 目前只開放月份類欄位，日期與時間區間由後端依 `targetMonth` 自動推導；CLI `generate-report` 則可用同一組 request model 傳入月份、日期與時間區間參數。`targetCategory` 仍未暴露為 UI/CLI 參數。

@@ -1,6 +1,6 @@
-# Java SFTP Download
+# Java SFTP Download / Upload
 
-本文件說明 Java 版 SFTP 下載入口，用來把每日交易統計 Excel 從 SFTP 備份目錄下載到 `01_excel_input`，再交給既有 `ingest` 流程處理。
+本文件說明 Java 版 SFTP 下載與上傳入口：`download-input` 會把每日交易統計 Excel 從 SFTP 備份目錄下載到 `01_excel_input`，`upload-report` 會把最新產出的月報 Excel 上傳回最近一次下載來源所在的 SFTP 目錄。
 
 ## 目標
 
@@ -19,9 +19,9 @@ SFTP 連線設定放在 `application.yml`：
 ```yaml
 remote:
   url: sftp://10.1.11.47:22
-  username: ncb
+  username: fsap
   code: <encrypted-password>
-  defPath: NCB/
+  defPath: FSAP/
 ```
 
 本機下載目錄由 `fsap.paths.base-dir` 與 `fsap.paths.input-dir` 決定。正式部署建議使用：
@@ -36,7 +36,7 @@ remote:
 /app/fsap-monitor-util/fsap-month-report-develop/01_excel_input
 ```
 
-## CLI
+## 下載 CLI
 
 預設下載今天的檔案：
 
@@ -98,6 +98,52 @@ SFTP 下載會同時輸出 console log 與執行紀錄檔：
 
 log 會記錄下載開始、連線目標、掃描目錄數、命中的遠端檔案、下載成功位置與失敗原因。紀錄中只會寫入 `remote.url` 與 `remote.username`，不會寫入密碼或解密後的 `remote.code`。
 
+下載成功後也會寫入最新下載來源 metadata：
+
+```text
+{fsap.paths.base-dir}/logs/latest-sftp-download.json
+```
+
+這個檔案會保存檔名、遠端完整路徑、遠端目錄、本機路徑與下載時間，供 `upload-report` 預設判斷要上傳回哪個 SFTP 目錄。
+
+## 上傳 CLI
+
+預設上傳最新報表批次中的 `.xlsx`，並使用 `logs/latest-sftp-download.json` 內的 `remoteDirectory` 作為遠端目錄：
+
+```bash
+java -jar fsap-monitor-util-0.1.0-SNAPSHOT.jar \
+  --fsap.paths.base-dir=/app/fsap-monitor-util/fsap-month-report-develop \
+  upload-report
+```
+
+可手動指定本機報表檔與遠端目錄：
+
+```bash
+java -jar fsap-monitor-util-0.1.0-SNAPSHOT.jar \
+  --fsap.paths.base-dir=/app/fsap-monitor-util/fsap-month-report-develop \
+  upload-report \
+  --local-file 04_report_output/202606010930/維運月度報表_05月彙總_202606010930.xlsx \
+  --remote-dir /FSAP/FILE_BCKP/01150526
+```
+
+若遠端已有同名檔案，預設會停止並報錯。需要覆蓋時加上：
+
+```bash
+upload-report --overwrite
+```
+
+若要指定其他下載 metadata 檔：
+
+```bash
+upload-report --metadata-file logs/latest-sftp-download.json
+```
+
+上傳紀錄會寫入：
+
+```text
+{fsap.paths.base-dir}/logs/sftp_upload.log
+```
+
 ## 後續流程
 
 下載完成後可接續執行：
@@ -107,3 +153,11 @@ java -jar fsap-monitor-util-0.1.0-SNAPSHOT.jar \
   --fsap.paths.base-dir=/app/fsap-monitor-util/fsap-month-report-develop \
   ingest --date 20260520
 ```
+
+完整 SFTP 主線通常是：
+
+1. `download-input`
+2. `ingest`
+3. `sync-views`
+4. `generate-report`
+5. `upload-report`

@@ -122,6 +122,8 @@ com.fsap.monitor
 | `fsap-month-report-db.py` | `web` / `serve` | 查詢 UI、歷史、schema 檢視 |
 | `update_monitor_data.py` | `update-monitor-data` | 查 DB 輸出 CSV/JS |
 | `start-fsap-month-report-db.sh` | `serve` + 啟動腳本 | `java -jar ... serve` |
+| SFTP 每日來源下載 | `download-input` | 從 SFTP 備份目錄下載 Excel 到 `01_excel_input` |
+| SFTP 月報回傳 | `upload-report` | 將最新月報 Excel 上傳回最近一次下載來源目錄 |
 
 ---
 
@@ -135,12 +137,14 @@ java -jar fsap-monitor-util.jar <command> [options]
 
 建議命令如下：
 
-1. `ingest`
-2. `sync-views`
-3. `generate-report`
-4. `update-monitor-data`
-5. `serve`
-6. `doctor`
+1. `doctor`
+2. `download-input`
+3. `ingest`
+4. `sync-views`
+5. `generate-report`
+6. `upload-report`
+7. `update-monitor-data`
+8. `serve`
 
 ---
 
@@ -165,8 +169,8 @@ java -jar fsap-monitor-util.jar ingest [--force] [--limit N] [--date YYYYMMDD]
 | `--force` | 強制重轉 |
 | `--limit N` | 只處理最新 N 份檔案 |
 | `--date YYYYMMDD` | 只處理指定日期 |
-| `--input-dir PATH` | 覆寫 Excel 輸入目錄 |
-| `--output-dir PATH` | 覆寫 source lake 目錄 |
+
+輸入、輸出、DuckDB 與 SQL 目錄目前統一透過 Spring Boot 設定覆寫，例如 `--fsap.paths.base-dir=...`、`--fsap.paths.input-dir=...`、`--fsap.paths.source-lake-dir=...`。
 
 #### Exit Code
 
@@ -180,10 +184,8 @@ java -jar fsap-monitor-util.jar ingest [--force] [--limit N] [--date YYYYMMDD]
 #### 主要 service
 
 - `IngestCommand`
-- `ExcelIngestService`
-- `ExcelSheetReader`
-- `JsonlGzipWriter`
-- `IngestLogService`
+- `IngestService`
+- `ProjectPathService`
 
 ---
 
@@ -205,15 +207,15 @@ java -jar fsap-monitor-util.jar sync-views [--max-rounds 3] [--fail-fast]
 | :--- | :--- |
 | `--max-rounds N` | View 重試輪數 |
 | `--fail-fast` | 任一失敗立即結束 |
-| `--views-dir PATH` | 覆寫 views 目錄 |
-| `--db PATH` | 覆寫 DuckDB 路徑 |
+
+views 目錄與 DuckDB 路徑目前統一透過 `fsap.paths.sql-logic-dir` 與 `fsap.paths.database-file` 覆寫。
 
 #### 主要 service
 
 - `SyncViewsCommand`
 - `ViewSyncService`
-- `SqlFileLoader`
-- `DuckDbExecutor`
+- `ProjectPathService`
+- `DuckDbConnectionFactory`
 
 #### 備註
 
@@ -235,7 +237,7 @@ java -jar fsap-monitor-util.jar sync-views [--max-rounds 3] [--fail-fast]
 #### 建議語法
 
 ```bash
-java -jar fsap-monitor-util.jar generate-report [--timestamp YYYYMMDDHHMM] [--report-dir PATH]
+java -jar fsap-monitor-util.jar generate-report [--timestamp YYYYMMDDHHMM] [--continue-on-error] [report parameters...]
 ```
 
 #### 建議參數
@@ -243,18 +245,23 @@ java -jar fsap-monitor-util.jar generate-report [--timestamp YYYYMMDDHHMM] [--re
 | 參數 | 說明 |
 | :--- | :--- |
 | `--timestamp TS` | 指定批次目錄時間戳 |
-| `--report-dir PATH` | 覆寫輸出目錄 |
-| `--reports-dir PATH` | 覆寫 SQL 報表目錄 |
-| `--db PATH` | 覆寫 DuckDB 路徑 |
 | `--continue-on-error` | 單支報表失敗不終止整批 |
+| `--target-month YYYY-MM` | 指定報表月份 |
+| `--range-start-date YYYY-MM-DD` | 指定每日報表起日 |
+| `--range-end-date YYYY-MM-DD` | 指定每日報表迄日 |
+| `--range-start-time "YYYY-MM-DD HH:mm"` | 指定明細報表起始時間 |
+| `--range-end-time "YYYY-MM-DD HH:mm"` | 指定明細報表結束時間 |
+| `--history-start-month YYYY-MM` | 指定歷史區間起始月份 |
+| `--history-end-month YYYY-MM` | 指定歷史區間結束月份 |
+
+輸出目錄、報表 SQL 目錄與 DuckDB 路徑目前統一透過 `fsap.paths.report-output-dir`、`fsap.paths.sql-logic-dir` 與 `fsap.paths.database-file` 覆寫。
 
 #### 主要 service
 
 - `GenerateReportCommand`
 - `ReportGenerationService`
-- `ReportSqlRunner`
-- `ExcelWorkbookWriter`
-- `CsvReportWriter`
+- `ReportGenerationRequest`
+- `ReportParameterDefaultsService`
 
 #### 必保行為
 
@@ -282,8 +289,8 @@ java -jar fsap-monitor-util.jar update-monitor-data [--config PATH]
 | 參數 | 說明 |
 | :--- | :--- |
 | `--config PATH` | 設定檔路徑 |
-| `--db PATH` | 覆寫 DuckDB 路徑 |
-| `--output-dir PATH` | 覆寫輸出目錄 |
+
+DuckDB 路徑與輸出根目錄目前統一透過 `fsap.paths.database-file` 與 `fsap.paths.report-output-dir` 覆寫。
 
 #### 主要 service
 
@@ -323,7 +330,9 @@ java -jar fsap-monitor-util.jar serve [--port 8080]
 | `--port N` | Web port |
 | `--host HOST` | 綁定 host |
 | `--readonly` | 強制唯讀模式 |
-| `--db PATH` | 覆寫 DuckDB 路徑 |
+| `--writable` | 啟用 Web UI 任務操作 |
+
+DuckDB 路徑目前統一透過 `fsap.paths.database-file` 覆寫。
 
 #### 主要職責
 
@@ -335,7 +344,64 @@ java -jar fsap-monitor-util.jar serve [--port 8080]
 
 ---
 
-### 7.6 `doctor`
+### 7.6 `download-input`
+
+#### 用途
+
+從 SFTP 備份目錄下載每日交易統計 Excel 到 `01_excel_input`。
+
+#### 建議語法
+
+```bash
+java -jar fsap-monitor-util.jar download-input [--date yyyyMMdd] [--filename NAME] [--remote-root PATH] [--local-dir PATH] [--overwrite]
+```
+
+#### 建議參數
+
+| 參數 | 說明 |
+| :--- | :--- |
+| `--date yyyyMMdd` | 目標西元日期，預設為 Asia/Taipei 今日 |
+| `--filename NAME` | 覆寫遠端檔名 |
+| `--remote-root PATH` | 覆寫遠端備份根目錄，預設 `/FSAP/FILE_BCKP` |
+| `--local-dir PATH` | 覆寫本機下載目錄 |
+| `--overwrite` | 本機已存在同名檔案時覆蓋 |
+
+#### 主要 service
+
+- `DownloadInputCommand`
+- `SftpInputDownloadService`
+
+---
+
+### 7.7 `upload-report`
+
+#### 用途
+
+將最新產出的月報 Excel 上傳回 SFTP。預設使用 `download-input` 寫入的 `logs/latest-sftp-download.json` 判斷遠端目錄。
+
+#### 建議語法
+
+```bash
+java -jar fsap-monitor-util.jar upload-report [--local-file PATH] [--remote-dir PATH] [--metadata-file PATH] [--overwrite]
+```
+
+#### 建議參數
+
+| 參數 | 說明 |
+| :--- | :--- |
+| `--local-file PATH` | 指定要上傳的 `.xlsx`，未指定時使用最新報表批次中的 workbook |
+| `--remote-dir PATH` | 指定遠端目錄，未指定時讀取最近一次下載 metadata |
+| `--metadata-file PATH` | 覆寫最近一次下載 metadata 檔 |
+| `--overwrite` | 遠端已存在同名報表時覆蓋 |
+
+#### 主要 service
+
+- `UploadReportCommand`
+- `SftpReportUploadService`
+
+---
+
+### 7.8 `doctor`
 
 #### 用途
 
@@ -370,10 +436,9 @@ java -jar fsap-monitor-util.jar doctor
 | Controller | 路徑 | 責任 |
 | :--- | :--- | :--- |
 | `PageController` | `/` | 首頁與查詢頁 |
-| `QueryController` | `/api/query` | 執行查詢 |
-| `SchemaController` | `/api/schema` | 列表 table/view 與欄位 |
-| `HistoryController` | `/api/history` | 查詢歷史 |
-| `DownloadController` | `/download/*` | 匯出 CSV/JSONL |
+| `QueryController` | `/api/query`、`/api/schema` | 執行查詢、列表 table/view 與欄位 |
+| `TaskController` | `/api/tasks/*` | UI 任務觸發、任務狀態、輸入檔 / 報表 / monitor 產物查詢 |
+| `FileDownloadController` | `/downloads/file` | 依安全相對路徑下載報表、monitor CSV/JS 與輸入檔 |
 | `HealthController` | `/health` | 健康檢查 |
 
 ### 8.2 頁面切分
@@ -501,8 +566,9 @@ fsap:
 4. 實作 `sync-views`
 5. 實作 `generate-report`
 6. 實作 `doctor`
-7. 實作 `update-monitor-data`
-8. 最後再實作 `serve`
+7. 實作 `download-input` / `upload-report`
+8. 實作 `update-monitor-data`
+9. 最後再實作 `serve`
 
 理由很簡單：
 

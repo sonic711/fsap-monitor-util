@@ -2,7 +2,7 @@
 
 本文件說明目前 Java 版 `fsap-monitor-util` 的實際操作流程，從啟動、檢查環境，到最終產生報告與監控輸出。
 
-更新日期：2026-04-23
+更新日期：2026-05-26
 
 ## 1. 前置條件
 
@@ -53,15 +53,33 @@ java -jar build/libs/fsap-monitor-util-0.1.0-SNAPSHOT.jar --help
 目前可用命令：
 
 - `doctor`
+- `download-input`
 - `ingest`
 - `sync-views`
 - `generate-report`
+- `upload-report`
 - `update-monitor-data`
 - `serve`
 
 ## 4. 建議的完整報表產出流程
 
 如果你的目標是從原始 Excel 走到最終報表，建議依下列順序執行。
+
+### Step 0. 從 SFTP 下載每日 Excel（需要時）
+
+如果 `01_excel_input` 尚未有當日來源檔，可先從 SFTP 備份目錄下載：
+
+```bash
+java -jar build/libs/fsap-monitor-util-0.1.0-SNAPSHOT.jar \
+  --fsap.paths.base-dir=fsap-month-report-develop \
+  download-input --date 20260526
+```
+
+用途：
+
+- 搜尋 `/FSAP/FILE_BCKP` 底下包含 `FSAP每日交易統計yyyyMMdd.xlsx` 的備份子目錄
+- 下載到 `01_excel_input`
+- 寫入 `logs/latest-sftp-download.json`，供後續 `upload-report` 預設上傳回同一個 SFTP 目錄
 
 ### Step 1. 檢查環境
 
@@ -239,7 +257,7 @@ java -jar build/libs/fsap-monitor-util-0.1.0-SNAPSHOT.jar \
   upload-report --overwrite
 ```
 
-## 6. 監控資料輸出流程
+## 5. 監控資料輸出流程
 
 如果除了報表外，還要產生 dashboard 用的監控資料：
 
@@ -337,17 +355,23 @@ java -jar build/libs/fsap-monitor-util-0.1.0-SNAPSHOT.jar \
 
 ### v1.1 Web UI 結構
 
-目前首頁已分成兩個 tab：
+目前首頁已分成三個 tab：
 
 1. `Operations`
-2. `Query Console`
+2. `Monitor Dashboard`
+3. `Query Console`
 
 `Operations` 內包含：
 
 - `Operations` 任務操作區
 - `Recent Report Batches`
-- `Monitor Data Exports`
 - `Task Status`
+
+`Monitor Dashboard` 內包含：
+
+- `Monitor Data Exports`
+- monitor CSV 互動表格
+- Chart.js 趨勢圖
 
 `Query Console` 內包含：
 
@@ -402,12 +426,14 @@ java -jar build/libs/fsap-monitor-util-0.1.0-SNAPSHOT.jar \
 如果你是第一次驗證 Java 版，建議照這個順序：
 
 1. `./gradlew clean bootJar -x test`
-2. `doctor`
-3. `ingest`
-4. `sync-views`
-5. `generate-report`
-6. `update-monitor-data`
-7. `serve`
+2. `download-input`（若需要從 SFTP 抓來源檔）
+3. `doctor`
+4. `ingest`
+5. `sync-views`
+6. `generate-report`
+7. `upload-report`（若需要回傳月報到 SFTP）
+8. `update-monitor-data`
+9. `serve`
 
 ## 8. 最終產出整理
 

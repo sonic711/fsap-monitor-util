@@ -72,9 +72,11 @@
 目前主要 CLI 指令：
 
 - `doctor`
+- `download-input`
 - `ingest`
 - `sync-views`
 - `generate-report`
+- `upload-report`
 - `update-monitor-data`
 - `serve`
 
