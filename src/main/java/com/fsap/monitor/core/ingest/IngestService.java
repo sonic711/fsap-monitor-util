@@ -8,7 +8,6 @@ import java.nio.file.Files;
 import java.nio.file.Path;
 import java.nio.file.StandardOpenOption;
 import java.time.Instant;
-import java.time.LocalDate;
 import java.time.LocalDateTime;
 import java.time.ZoneId;
 import java.time.format.DateTimeFormatter;
@@ -87,16 +86,16 @@ public class IngestService {
         }
 
         logIngest("=== FSAP 報表實驗室：Step 1 數據標準化開始 ===");
-        logIngest(force ? "🔥 [模式] 強制全量重新轉換 (FORCE MODE)" : "💡 [模式] 增量匯入 (INCREMENTAL MODE)");
+        logIngest(force ? " [模式] 強制全量重新轉換 (FORCE MODE)" : " [模式] 增量匯入 (INCREMENTAL MODE)");
         if (date != null && !date.isBlank()) {
-            logIngest("🎯 [日期] 僅處理 " + date.trim());
+            logIngest(" [日期] 僅處理 " + date.trim());
         }
         if (limit != null && limit > 0) {
-            logIngest("🎯 [限制] 將處理最新的 " + limit + " 個檔案");
+            logIngest(" [限制] 將處理最新的 " + limit + " 個檔案");
         }
 
         if (excelFiles.isEmpty()) {
-            logIngest("⚠️ 在 " + projectPathService.inputDir() + " 找不到符合條件的 Excel 檔案");
+            logIngest("️ 在 " + projectPathService.inputDir() + " 找不到符合條件的 Excel 檔案");
             return new IngestResult(0, 0, 0, List.of());
         }
 
@@ -113,7 +112,7 @@ public class IngestService {
             failures.addAll(result.failures());
         }
 
-        logIngest("=== ✨ 數據加工完成！所有成品已存入 02_source_lake ===");
+        logIngest("===  數據加工完成！所有成品已存入 02_source_lake ===");
         logIngest("Summary: processed=" + processedFiles + " skipped=" + skippedFiles + " outputs=" + writtenFiles + " failures=" + failures.size());
 
         if (!failures.isEmpty()) {
@@ -156,7 +155,7 @@ public class IngestService {
     private ProcessResult processExcelFile(Path excelFile, Pattern filenamePattern, List<String> targetSheets, boolean force) {
         Matcher matcher = filenamePattern.matcher(excelFile.getFileName().toString());
         if (!matcher.matches()) {
-            logIngest("⚠️ 跳過不符命名規則的檔案: " + excelFile.getFileName());
+            logIngest("️ 跳過不符命名規則的檔案: " + excelFile.getFileName());
             return new ProcessResult(false, true, 0, List.of());
         }
 
@@ -177,16 +176,16 @@ public class IngestService {
                     .toList();
 
             if (expectedSheets.isEmpty()) {
-                logIngest("⏭️ [跳過] " + yyyymmdd + " (無目標分頁)");
+                logIngest("[跳過] " + yyyymmdd + " (無目標分頁)");
                 return new ProcessResult(false, true, 0, List.of());
             }
 
             if (!force && allOutputsExist(expectedSheets, yyyymmdd)) {
-                logIngest("⏭️ [跳過] " + yyyymmdd + " (已存在)");
+                logIngest("[跳過] " + yyyymmdd + " (已存在)");
                 return new ProcessResult(false, true, 0, List.of());
             }
 
-            logIngest("🚀 正在加工檔案: " + excelFile.getFileName() + " (日期: " + yyyymmdd + ")");
+            logIngest(" 正在加工檔案: " + excelFile.getFileName() + " (日期: " + yyyymmdd + ")");
 
             for (String sheetName : targetSheets) {
                 if (!availableSheets.contains(sheetName)) {
@@ -205,17 +204,17 @@ public class IngestService {
                     Files.createDirectories(outputFile.getParent());
                     int rowCount = writeSheet(workbook.getSheet(sheetName), excelFile.getFileName().toString(), sheetName, yyyymmdd, outputFile);
                     writtenFiles++;
-                    logIngest("  ✅ [完成] " + sheetName + " -> " + outputFile.getFileName() + " (共 " + rowCount + " 筆)");
+                    logIngest("   [完成] " + sheetName + " -> " + outputFile.getFileName() + " (共 " + rowCount + " 筆)");
                 } catch (Exception exception) {
                     String message = "處理分頁 " + sheetName + " 時發生異常: " + exception.getMessage();
                     failures.add(excelFile.getFileName() + " / " + sheetName + ": " + exception.getMessage());
-                    logIngest("  ❌ [錯誤] " + message);
+                    logIngest("   [錯誤] " + message);
                 }
             }
         } catch (Exception exception) {
             String message = "無法讀取 Excel: " + exception.getMessage();
             failures.add(excelFile.getFileName() + ": " + exception.getMessage());
-            logIngest("❌ " + message);
+            logIngest(" " + message);
         }
 
         return new ProcessResult(true, false, writtenFiles, failures);

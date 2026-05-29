@@ -58,7 +58,7 @@ FilteredDiff AS (
 ),
 UnpivotData AS (
     -- 步驟 6：將三個指標拆成三列，並轉為字串方便後續 PIVOT
-    -- 💡 第三列的項目名稱一樣給 '3. ' (空白)，維持版面乾淨
+    --  第三列的項目名稱一樣給 '3. ' (空白)，維持版面乾淨
     SELECT '1.單日峰值日期' AS "項目", "年月", CAST("單日峰值日期" AS VARCHAR) AS "數值" FROM FilteredDiff
     UNION ALL
     SELECT '2.單日峰值交易量' AS "項目", "年月", CAST("單日峰值交易量" AS VARCHAR) AS "數值" FROM FilteredDiff

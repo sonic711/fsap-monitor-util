@@ -1,7 +1,6 @@
 package com.fsap.monitor.core.service;
 
 import java.nio.file.Path;
-import java.util.List;
 import java.util.regex.Matcher;
 import java.util.regex.Pattern;
 
@@ -90,7 +89,7 @@ public class ProjectPathService {
      */
     public String rewriteProjectRelativePaths(String sql) {
         Matcher matcher = PROJECT_RELATIVE_PATH_PATTERN.matcher(sql);
-        StringBuffer buffer = new StringBuffer();
+        StringBuilder buffer = new StringBuilder();
         while (matcher.find()) {
             String rewritten = "'" + resolveSqlLiteralPath(matcher.group(1)) + "'";
             matcher.appendReplacement(buffer, Matcher.quoteReplacement(rewritten));

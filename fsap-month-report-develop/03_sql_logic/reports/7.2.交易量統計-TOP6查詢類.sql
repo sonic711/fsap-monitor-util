@@ -2,7 +2,7 @@ WITH params AS (
     SELECT 
         '${targetMonth}' AS TargetMonth,
         'FAC2FAS' AS ExcludePrId,
-        'query'  AS TargetCategory -- 🌟 控制台：'update' 為交易類，'query' 為查詢類
+        'query'  AS TargetCategory --  控制台：'update' 為交易類，'query' 為查詢類
 ),
 Exclude_PR_ID AS (
     SELECT UNNEST(string_split(p.ExcludePrId, ',')) AS PR_ID
@@ -35,7 +35,7 @@ SystemStats AS (
     FROM BaseDaily b
     JOIN v_pr_info i ON b.PR_ID = i.PR_ID
     CROSS JOIN params p
-    WHERE (i.PR_CATEGORY = p.TargetCategory OR p.TargetCategory = '') -- 🌟 動態過濾分類
+    WHERE (i.PR_CATEGORY = p.TargetCategory OR p.TargetCategory = '') --  動態過濾分類
     GROUP BY b.PR_ID
 ),
 PeakDayStats AS (
@@ -51,7 +51,7 @@ PeakDayStats AS (
 -- 步驟 5：組合所有數據
 SELECT 
     m.PR_ID AS "交易類型",
-    COALESCE(i.PR_NAME, '未定義名稱') AS "名稱", -- 🌟 自動從 v_pr_info 帶入中文名稱
+    COALESCE(i.PR_NAME, '未定義名稱') AS "名稱", --  自動從 v_pr_info 帶入中文名稱
     m.sys_total_cnt AS "交易總量",
     CAST(ROUND(m.sys_avg_ms, 0) AS INT) AS "平均處理時間",
     

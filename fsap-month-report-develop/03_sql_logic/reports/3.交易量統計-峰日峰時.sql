@@ -1,5 +1,5 @@
 WITH params AS (
-    -- 🌟 [參數控制台] 修改此處即可產出不同月份的報表
+    --  [參數控制台] 修改此處即可產出不同月份的報表
     SELECT 
         '${targetMonth}' AS target_month,   -- 指定統計年月
         'FAC2FAS' AS exclude_pr_id    -- 指定要排除的交易代碼

@@ -72,7 +72,7 @@ SELECT
   -- meta
   _file, _sheet, _dt, _ingest_ts
 FROM final
--- 🌟 加入去重機制，確保每個交易日、每小時、每個 PR_ID 只有一筆資料
+--  加入去重機制，確保每個交易日、每小時、每個 PR_ID 只有一筆資料
 QUALIFY ROW_NUMBER() OVER (
     PARTITION BY tx_dt, tx_hour, PR_ID
     ORDER BY file_dt DESC, _dt DESC, _file DESC

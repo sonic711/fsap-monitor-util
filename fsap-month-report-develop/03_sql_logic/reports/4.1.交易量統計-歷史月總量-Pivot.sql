@@ -42,7 +42,7 @@ FilteredDiff AS (
 ),
 UnpivotData AS (
     -- 步驟 4：將三個指標拆成三列，並轉為字串方便後續 PIVOT
-    -- 💡 注意：第三列的項目名稱刻意給 '3. ' (空白)，符合您簡報上不顯示名稱的需求
+    --  注意：第三列的項目名稱刻意給 '3. ' (空白)，符合您簡報上不顯示名稱的需求
     SELECT '1.總交易量' AS "項目", "年月", CAST("月總交易量" AS VARCHAR) AS "數值" FROM FilteredDiff
     UNION ALL
     SELECT '2.與上月比較' AS "項目", "年月", CAST("與上月比較差異" AS VARCHAR) AS "數值" FROM FilteredDiff

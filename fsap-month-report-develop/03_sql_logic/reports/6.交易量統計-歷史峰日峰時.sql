@@ -1,6 +1,6 @@
 WITH params AS (
     SELECT
-        '${historyStartMonth}' AS StartYM,    -- 🌟 往前推一個月作為基底
+        '${historyStartMonth}' AS StartYM,    --  往前推一個月作為基底
         '${historyEndMonth}' AS EndYM,
         'FAC2FAS' AS ExcludePrId -- 排除清單
 ), 

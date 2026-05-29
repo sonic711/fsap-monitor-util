@@ -120,7 +120,7 @@ public class ReportGenerationService {
 
         try (Connection connection = connectionFactory.openConnection();
              XSSFWorkbook workbook = new XSSFWorkbook()) {
-            logExecution("✅ [資料庫] 已連接實體庫: " + projectPathService.databaseFile().getFileName());
+            logExecution("[資料庫] 已連接實體庫: " + projectPathService.databaseFile().getFileName());
             // POI 的 CellStyle 只能屬於單一 workbook。每次重新建立可以避免
             // 第二次產報時誤用上一份 workbook style 的錯誤。
             WorkbookStyles workbookStyles = createWorkbookStyles(workbook);
@@ -132,14 +132,14 @@ public class ReportGenerationService {
             for (Path reportFile : reportFiles) {
                 String baseName = stripSqlExtension(reportFile.getFileName().toString());
                 String sheetName = nextSheetName(baseName, usedSheetNames);
-                logExecution("📝 [處理中] " + reportFile.getFileName());
+                logExecution("[處理中] " + reportFile.getFileName());
 
                 try {
                     QueryTable table = executeReportQuery(connection, reportFile, effectiveRequest);
                     writeWorkbookSheet(workbook, workbookStyles, sheetName, table);
                     writeCsv(runDirectory.resolve(baseName + ".csv"), table);
                     reportResults.add(new ReportFileResult(baseName, table.rows().size(), true, null));
-                    logExecution("  ✅ 完成 (" + table.rows().size() + " 筆)");
+                    logExecution("完成 (" + table.rows().size() + " 筆)");
                 } catch (Exception exception) {
                     String errorMessage = reportFile.getFileName() + ": " + exception.getMessage();
                     failures.add(errorMessage);
@@ -147,7 +147,7 @@ public class ReportGenerationService {
                     // 把失敗資訊直接寫進 workbook，這樣操作人員即使不看 server log，
                     // 也能從報表成品本身知道哪一頁出了什麼問題。
                     writeErrorSheet(workbook, workbookStyles, nextSheetName("ERR_" + baseName, usedSheetNames), exception.getMessage());
-                    logExecution("  ❌ 失敗: " + exception.getMessage());
+                    logExecution("失敗: " + exception.getMessage());
                     if (!effectiveRequest.continueOnError()) {
                         fatalFailure = exception;
                         break;
@@ -164,8 +164,8 @@ public class ReportGenerationService {
             throw new IllegalStateException("Report generation failed", exception);
         }
 
-        logExecution("📊 彙總報表: " + workbookPath.getFileName());
-        logExecution("✨ 產出完成: success=" + successCount(reportResults) + " failure=" + failures.size());
+        logExecution("彙總報表: " + workbookPath.getFileName());
+        logExecution("產出完成: success=" + successCount(reportResults) + " failure=" + failures.size());
 
         if (fatalFailure != null) {
             throw new IllegalStateException("Report generation stopped after first failure", fatalFailure);
@@ -240,7 +240,7 @@ public class ReportGenerationService {
     private void loadMacros(Connection connection) {
         Path macrosDir = projectPathService.macrosDir();
         if (!Files.isDirectory(macrosDir)) {
-            logExecution("ℹ️ [工具] 無 macros 目錄，略過");
+            logExecution("[工具] 無 macros 目錄，略過");
             return;
         }
 
@@ -248,13 +248,13 @@ public class ReportGenerationService {
             List<Path> macroFiles = stream
                     .filter(path -> path.getFileName().toString().endsWith(".sql"))
                     .sorted(Comparator.comparing(path -> path.getFileName().toString()))
-                    .collect(Collectors.toList());
+                    .toList();
 
             for (Path macroFile : macroFiles) {
-                String sql = projectPathService.rewriteProjectRelativePaths(Files.readString(macroFile));
+                String sql = projectPathService.rewriteProjectRelativePaths(Files.readString(macroFile, StandardCharsets.UTF_8));
                 try (Statement statement = connection.createStatement()) {
                     statement.execute(sql);
-                    logExecution("🔧 [註冊工具] " + macroFile.getFileName());
+                    logExecution("[註冊工具] " + macroFile.getFileName());
                 }
             }
         } catch (Exception exception) {
@@ -264,7 +264,7 @@ public class ReportGenerationService {
 
     private void syncViews(Connection connection) {
         ViewSyncService.ViewSyncResult result = viewSyncService.syncViews(connection, null, false);
-        logExecution("✅ [載入視圖] success=" + result.successCount() + " failure=" + result.failureCount());
+        logExecution("[載入視圖] success=" + result.successCount() + " failure=" + result.failureCount());
         if (result.failureCount() > 0) {
             result.failures().forEach(failure -> logExecution("  - " + failure));
             throw new IllegalStateException("View sync finished with failures");
@@ -289,7 +289,7 @@ public class ReportGenerationService {
                 // 動態 pivot 報表在選定期間完全沒有資料時，DuckDB 會因為展不出欄位而失敗。
                 // 這裡改為輸出可讀提示頁，而不是讓整批報表直接中止。
                 if (looksLikePivotSql(sql) && isEmptyProjectionBinderError(exception)) {
-                    logExecution("  ℹ️ 無資料可供動態 PIVOT 展開，改輸出提示頁: " + reportFile.getFileName());
+                    logExecution("無資料可供動態 PIVOT 展開，改輸出提示頁: " + reportFile.getFileName());
                     return noDataTable(reportFile);
                 }
                 throw exception;
@@ -299,7 +299,7 @@ public class ReportGenerationService {
 
     private String renderReportParameters(String sql, ReportGenerationRequest request) {
         Matcher matcher = REPORT_PARAMETER_PATTERN.matcher(sql);
-        StringBuffer buffer = new StringBuffer();
+        StringBuilder buffer = new StringBuilder();
         while (matcher.find()) {
             String parameterName = matcher.group(1);
             String value = request.templateParameters().get(parameterName);

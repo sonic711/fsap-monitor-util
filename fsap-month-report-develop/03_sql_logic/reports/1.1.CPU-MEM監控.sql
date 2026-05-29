@@ -13,10 +13,10 @@ WITH params AS (
     SELECT 
         '${rangeStartDate}' AS start_date,
         '${rangeEndDate}' AS end_date,
-        'FSAP-RUNTIME' AS app_list -- 🌟 如果未來要根據 app_list 來過濾，可以在這裡修改應用程式清單
+        'FSAP-RUNTIME' AS app_list --  如果未來要根據 app_list 來過濾，可以在這裡修改應用程式清單
 ),
 AppList AS (
-    -- 🌟 如果未來要根據 app_list 來過濾，可以在這裡把它轉成表格格式，目前先保留這個 CTE 以備未來使用
+    --  如果未來要根據 app_list 來過濾，可以在這裡把它轉成表格格式，目前先保留這個 CTE 以備未來使用
     SELECT UNNEST(string_split(p.app_list, ',')) AS app_name
     FROM params p
 ),
@@ -34,7 +34,7 @@ SiteMapping AS (
     CROSS JOIN params p
     CROSS JOIN AppList a
     WHERE (1 = 1)
-    AND application IN (SELECT app_name FROM AppList)  -- 🌟 如果未來要根據 app_list 來過濾，可以在這裡使用
+    AND application IN (SELECT app_name FROM AppList)  --  如果未來要根據 app_list 來過濾，可以在這裡使用
     AND CAST(log_date AS VARCHAR) BETWEEN p.start_date AND p.end_date  -- 動態過濾日期範圍
       -- 鎖定 3 月份的資料
       --AND CAST(log_date AS VARCHAR) LIKE '2026-03-%'

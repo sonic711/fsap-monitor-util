@@ -24,11 +24,11 @@ SiteMapping AS (
         max_mem_rate,
         min_cpu_rate,
         min_mem_rate
-    -- 🌟 修正 1：用單引號包住整段查詢，裡面的路徑單引號改用 '' 跳脫
+    --  修正 1：用單引號包住整段查詢，裡面的路徑單引號改用 '' 跳脫
     FROM v_prod_monitor_daily_count
     -- 這裡保留 params p 的 CROSS JOIN (因為它永遠只有 1 列)，這是很棒的參數帶入法
     CROSS JOIN params p
-    -- 🌟 修正 2：拿掉 CROSS JOIN AppList a，避免資料翻倍，直接在 WHERE 過濾即可
+    --  修正 2：拿掉 CROSS JOIN AppList a，避免資料翻倍，直接在 WHERE 過濾即可
     WHERE (1 = 1)
       AND application IN (SELECT app_name FROM AppList)
       AND CAST(log_date AS VARCHAR) BETWEEN p.start_date AND p.end_date

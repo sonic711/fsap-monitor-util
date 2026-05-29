@@ -1,6 +1,6 @@
 -- mom_transaction_summary
 WITH params AS (
-    -- 🌟 控制台：調整兩個月份日期即可
+    --  控制台：調整兩個月份日期即可
     SELECT
         '${previousRangeStartTime}' AS StartTime_Mar,
         '${previousRangeEndTime}' AS EndTime_Mar,

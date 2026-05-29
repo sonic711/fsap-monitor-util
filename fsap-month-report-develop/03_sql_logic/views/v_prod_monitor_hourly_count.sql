@@ -27,7 +27,7 @@ SELECT
     logs.TARGET_IP,
     CAST(logs.log_createtime AS DATE) AS log_date,
     
-    -- 🌟 [修改亮點] 萃取出「小時」作為更細的統計維度 (0~23)
+    --  [修改亮點] 萃取出「小時」作為更細的統計維度 (0~23)
     CAST(EXTRACT(HOUR FROM logs.log_createtime) AS INT) AS log_hour,
 
     -- 統計總筆數
@@ -68,5 +68,5 @@ GROUP BY
     info.application,
     logs.TARGET_IP,
     CAST(logs.log_createtime AS DATE),
-    EXTRACT(HOUR FROM logs.log_createtime) -- 🌟 [修改亮點] 在 GROUP BY 加入小時
+    EXTRACT(HOUR FROM logs.log_createtime) --  [修改亮點] 在 GROUP BY 加入小時
 ;

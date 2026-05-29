@@ -32,10 +32,10 @@ SELECT
     logs.TARGET_IP,
     logs.TARGET_PORT,
     
-    -- 🌟 [修改] 將時間轉為乾淨的日期格式 (YYYY-MM-DD)
+    --  [修改] 將時間轉為乾淨的日期格式 (YYYY-MM-DD)
     CAST(logs.log_createtime AS DATE) AS log_date,
     
-    -- 🌟 [新增] 萃取出「小時」作為更細的統計維度 (0~23)
+    --  [新增] 萃取出「小時」作為更細的統計維度 (0~23)
     CAST(EXTRACT(HOUR FROM logs.log_createtime) AS INT) AS log_hour,
 
     -- 統計總筆數 (一小時內的採樣點總數)
@@ -59,7 +59,7 @@ FROM
     prepped_jvm_logs AS logs
 LEFT JOIN 
     app_info AS info 
-    -- 🌟 [修改] 加入安全轉型，確保 Port 型別一致能正確 JOIN
+    --  [修改] 加入安全轉型，確保 Port 型別一致能正確 JOIN
     ON logs.TARGET_IP = info.ipAddr 
    AND CAST(logs.TARGET_PORT AS VARCHAR) = CAST(info.port AS VARCHAR)
 GROUP BY
@@ -67,7 +67,7 @@ GROUP BY
     logs.TARGET_IP,
     logs.TARGET_PORT,
     CAST(logs.log_createtime AS DATE),
-    EXTRACT(HOUR FROM logs.log_createtime) -- 🌟 [新增] 按小時分組
+    EXTRACT(HOUR FROM logs.log_createtime) --  [新增] 按小時分組
 ORDER BY
     log_date DESC,
     log_hour DESC,

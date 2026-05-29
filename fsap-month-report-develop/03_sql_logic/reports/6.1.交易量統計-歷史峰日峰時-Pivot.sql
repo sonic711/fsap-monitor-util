@@ -1,6 +1,6 @@
 WITH params AS (
     SELECT
-        '${historyStartMonth}' AS StartYM,    -- 🌟 往前推一個月作為基底
+        '${historyStartMonth}' AS StartYM,    --  往前推一個月作為基底
         '${historyEndMonth}' AS EndYM,
         'FAC2FAS' AS ExcludePrId -- 排除清單
 ), 
@@ -90,7 +90,7 @@ FinalResult AS (
     WHERE c."年月" > p.StartYM
 ),
 UnpivotFormat AS (
-    -- 🌟 步驟 8：【解直魔法】把 4 個指標拆成上下堆疊的列，並加上隱藏排序 `_sort`
+    --  步驟 8：【解直魔法】把 4 個指標拆成上下堆疊的列，並加上隱藏排序 `_sort`
     SELECT 1 AS _sort, '1. 峰日日期' AS "指標", "年月", "峰日日期" AS "數值" FROM FinalResult
     UNION ALL
     SELECT 2 AS _sort, '2. 峰時區間' AS "指標", "年月", "峰時區間" AS "數值" FROM FinalResult
@@ -100,7 +100,7 @@ UnpivotFormat AS (
     SELECT 4 AS _sort, '4. 與上月差異(%)' AS "指標", "年月", "與上月比較差異(%)" AS "數值" FROM FinalResult
 ),
 PivotedResult AS (
-    -- 🌟 步驟 9：【轉橫魔法】正式 Pivot
+    --  步驟 9：【轉橫魔法】正式 Pivot
     PIVOT UnpivotFormat
     ON "年月"
     USING FIRST("數值")

@@ -2,10 +2,10 @@ WITH params AS (
     SELECT
         '${historyStartMonth}' AS StartYM,   -- 往前推一個月作為基底
         '${historyEndMonth}' AS EndYM,
-        'FAC2FAS' AS ExcludePrId -- 🌟 將排除清單也參數化
+        'FAC2FAS' AS ExcludePrId --  將排除清單也參數化
 ), 
 Exclude_PR_ID AS (
-    -- 🌟 修正：要有 FROM 才能從 params 抓資料，而且要對應別名 p
+    --  修正：要有 FROM 才能從 params 抓資料，而且要對應別名 p
     SELECT UNNEST(string_split(p.ExcludePrId, ',')) AS PR_ID
     FROM params p
 ),
@@ -14,14 +14,14 @@ MonthlyVolume AS (
         t.tx_yyyymm AS "年月",
         SUM(t.tx_cnt) AS "月總交易量"
     FROM v_rt_pr_hh24_clean t
-    CROSS JOIN params p       -- 🌟 修正 2：必須 CROSS JOIN 才能呼叫參數
+    CROSS JOIN params p       --  修正 2：必須 CROSS JOIN 才能呼叫參數
     WHERE (1 = 1)
       AND t.tx_yyyymm BETWEEN p.StartYM AND p.EndYM
       AND t.PR_ID NOT IN (SELECT PR_ID FROM Exclude_PR_ID)
     GROUP BY t.tx_yyyymm
 ),
 CalcDiff AS (
-    -- 🌟 修正 3：必須先在這裡把 LAG() 算好，才能進行下一步的過濾
+    --  修正 3：必須先在這裡把 LAG() 算好，才能進行下一步的過濾
     SELECT 
         "年月",
         "月總交易量",
