@@ -15,12 +15,6 @@ jasypt:
   encryptor:
     bean: encryptorBean
 
-remote:
-  url: sftp://10.1.11.47:22
-  username: fsap
-  code: 3UW75j3foLgKFSre9AvFfVDS1bavH5JV
-  defPath: FSAP/
-
 fsap:
   paths:
     base-dir: .

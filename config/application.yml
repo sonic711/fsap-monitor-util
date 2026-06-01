@@ -1,0 +1,22 @@
+server:
+  port: 8080
+
+remote:
+  url: sftp://10.1.11.47:22
+  username: fsap
+  code: 3UW75j3foLgKFSre9AvFfVDS1bavH5JV
+  defPath: FSAP/
+
+fsap:
+  paths:
+    base-dir: .
+    input-dir: 01_excel_input
+    source-lake-dir: 02_source_lake
+    sql-logic-dir: 03_sql_logic
+    report-output-dir: 04_report_output
+    database-file: 05_database/fsap-month-report.duckdb
+    log-dir: logs
+  web:
+    readonly: false
+  monitor:
+    config-file: config/monitor-data.json

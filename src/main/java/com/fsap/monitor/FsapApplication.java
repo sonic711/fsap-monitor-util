@@ -1,8 +1,12 @@
 package com.fsap.monitor;
 
+import java.net.URISyntaxException;
+import java.nio.file.Path;
 import java.util.Arrays;
+import java.util.LinkedHashMap;
 import java.util.List;
 import java.util.Locale;
+import java.util.Map;
 
 import org.apache.poi.openxml4j.util.ZipSecureFile;
 import org.springframework.boot.SpringApplication;
@@ -35,15 +39,13 @@ public class FsapApplication {
         if (isServeMode(parsedArguments.commandArgs())) {
             String[] serverArgs = merge(parsedArguments.springArgs(),
                     translateServeArgs(Arrays.copyOfRange(parsedArguments.commandArgs(), 1, parsedArguments.commandArgs().length)));
-            SpringApplication application = new SpringApplication(FsapApplication.class);
-            application.setWebApplicationType(WebApplicationType.SERVLET);
+            SpringApplication application = createApplication(WebApplicationType.SERVLET);
             application.run(serverArgs);
             return;
         }
 
         cliArgs = parsedArguments.commandArgs();
-        SpringApplication application = new SpringApplication(FsapApplication.class);
-        application.setWebApplicationType(WebApplicationType.NONE);
+        SpringApplication application = createApplication(WebApplicationType.NONE);
         int exitCode = SpringApplication.exit(application.run(parsedArguments.springArgs()));
         System.exit(exitCode);
     }
@@ -54,6 +56,50 @@ public class FsapApplication {
 
     private static boolean isServeMode(String[] args) {
         return args.length > 0 && "serve".equalsIgnoreCase(args[0]);
+    }
+
+    private static SpringApplication createApplication(WebApplicationType webApplicationType) {
+        SpringApplication application = new SpringApplication(FsapApplication.class);
+        application.setWebApplicationType(webApplicationType);
+        application.setDefaultProperties(defaultProperties());
+        return application;
+    }
+
+    private static Map<String, Object> defaultProperties() {
+        Map<String, Object> properties = new LinkedHashMap<>();
+        properties.put("spring.config.additional-location", externalConfigLocations());
+        return properties;
+    }
+
+    private static String externalConfigLocations() {
+        Path applicationHome = applicationHome();
+        return String.join(",",
+                asConfigDirectory(applicationHome),
+                asConfigDirectory(applicationHome.resolve("config"))
+        );
+    }
+
+    private static Path applicationHome() {
+        try {
+            Path codeSource = Path.of(FsapApplication.class.getProtectionDomain()
+                    .getCodeSource()
+                    .getLocation()
+                    .toURI());
+            if (codeSource.toFile().isFile()) {
+                return codeSource.getParent();
+            }
+            return codeSource;
+        } catch (URISyntaxException | RuntimeException exception) {
+            return Path.of(System.getProperty("user.dir"));
+        }
+    }
+
+    private static String asConfigDirectory(Path directory) {
+        String uri = directory.toAbsolutePath().normalize().toUri().toString();
+        if (!uri.endsWith("/")) {
+            uri += "/";
+        }
+        return "optional:" + uri;
     }
 
     private static String[] translateServeArgs(String[] args) {

@@ -2,7 +2,7 @@
 
 本文件說明目前 Java 版 `fsap-monitor-util` 的實際操作流程，從啟動、檢查環境，到最終產生報告與監控輸出。
 
-更新日期：2026-05-26
+更新日期：2026-06-01
 
 ## 1. 前置條件
 
@@ -61,7 +61,39 @@ java -jar build/libs/fsap-monitor-util-0.1.0-SNAPSHOT.jar --help
 - `update-monitor-data`
 - `serve`
 
-## 4. 建議的完整報表產出流程
+## 4. 外部設定檔
+
+JAR 內仍保留基本預設值，但正式執行時建議把可調整或環境相關設定放在 JAR 外部：
+
+```text
+fsap-monitor-util-0.1.0-SNAPSHOT.jar
+config/application.yml
+config/monitor-data.json
+```
+
+程式啟動時會自動讀取下列位置的外部設定，Web `serve` 與所有 command 都共用同一套規則：
+
+- 目前工作目錄的 `application.yml`
+- 目前工作目錄的 `config/application.yml`
+- JAR 所在目錄的 `application.yml`
+- JAR 所在目錄的 `config/application.yml`
+
+因此一般情境可以直接把 `config/application.yml` 放在 JAR 旁邊，不需要每次加 `--spring.config.location`：
+
+```bash
+java -jar fsap-monitor-util-0.1.0-SNAPSHOT.jar doctor
+java -jar fsap-monitor-util-0.1.0-SNAPSHOT.jar serve --port 18080
+```
+
+若仍要手動指定設定檔，Spring 參數要放在 command 前面：
+
+```bash
+java -jar fsap-monitor-util-0.1.0-SNAPSHOT.jar \
+  --spring.config.additional-location=file:/app/fsap-monitor-util/config/ \
+  doctor
+```
+
+## 5. 建議的完整報表產出流程
 
 如果你的目標是從原始 Excel 走到最終報表，建議依下列順序執行。
 
@@ -257,7 +289,7 @@ java -jar build/libs/fsap-monitor-util-0.1.0-SNAPSHOT.jar \
   upload-report --overwrite
 ```
 
-## 5. 監控資料輸出流程
+## 6. 監控資料輸出流程
 
 如果除了報表外，還要產生 dashboard 用的監控資料：
 
@@ -298,7 +330,7 @@ java -jar build/libs/fsap-monitor-util-0.1.0-SNAPSHOT.jar \
   update-monitor-data --config config/monitor-data.json
 ```
 
-## 6. 啟動 Web Service
+## 7. 啟動 Web Service
 
 如果你要用 Java Web Dashboard 查詢資料或下載產物：
 
@@ -421,7 +453,7 @@ java -jar build/libs/fsap-monitor-util-0.1.0-SNAPSHOT.jar \
 - UI 任務歷史目前只保留在記憶體中，若重啟服務會清空
 - `Update Monitor Data` 目前不在這條主線 workflow 內，視為額外操作
 
-## 7. 建議實際操作順序
+## 8. 建議實際操作順序
 
 如果你是第一次驗證 Java 版，建議照這個順序：
 
@@ -435,7 +467,7 @@ java -jar build/libs/fsap-monitor-util-0.1.0-SNAPSHOT.jar \
 8. `update-monitor-data`
 9. `serve`
 
-## 8. 最終產出整理
+## 9. 最終產出整理
 
 ### 報表產物
 
@@ -477,7 +509,7 @@ logs/
 - `report_execution.log`
 - `query_history.log.jsonl`
 
-## 9. 一套最短可用流程範例
+## 10. 一套最短可用流程範例
 
 如果你只是要快速跑出 Java 版月報，可直接使用：
 
@@ -513,7 +545,7 @@ java -jar build/libs/fsap-monitor-util-0.1.0-SNAPSHOT.jar \
   serve --port 18080
 ```
 
-## 10. 結論
+## 11. 結論
 
 目前 Java 版已可支撐以下主線：
 

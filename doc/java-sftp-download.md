@@ -14,7 +14,7 @@
 
 ## 設定
 
-SFTP 連線設定放在 `application.yml`：
+SFTP 連線設定放在 JAR 外部的 `config/application.yml`。程式啟動時會自動讀取 JAR 所在目錄與目前工作目錄下的 `config/application.yml`，Web `serve` 與所有 CLI command 都適用：
 
 ```yaml
 remote:
@@ -22,6 +22,14 @@ remote:
   username: fsap
   code: <encrypted-password>
   defPath: FSAP/
+```
+
+正式部署建議目錄結構：
+
+```text
+fsap-monitor-util-0.1.0-SNAPSHOT.jar
+config/application.yml
+config/monitor-data.json
 ```
 
 本機下載目錄由 `fsap.paths.base-dir` 與 `fsap.paths.input-dir` 決定。正式部署建議使用：
