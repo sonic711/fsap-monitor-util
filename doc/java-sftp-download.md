@@ -162,10 +162,19 @@ java -jar fsap-monitor-util-0.1.0-SNAPSHOT.jar \
   ingest --date 20260520
 ```
 
-完整 SFTP 主線通常是：
+完整 SFTP 主線通常可拆成兩個 Jenkins Job：
+
+每日資料處理 Job 使用 `Jenkinsfile`：
 
 1. `download-input`
 2. `ingest`
 3. `sync-views`
 4. `generate-report`
-5. `upload-report`
+
+月報上傳 Job 使用 `Jenkinsfile.upload`：
+
+1. `doctor`
+2. `generate-report`
+3. `upload-report`
+
+這樣每天只會產生本機彙總報告，不會每天上傳到 SFTP；上傳時機由 Jenkins 月排程或人工 Build with Parameters 控制。

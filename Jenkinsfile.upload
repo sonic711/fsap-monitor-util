@@ -113,58 +113,7 @@ pipeline {
             }
         }
 
-        stage('2. Download Latest Transaction Report') {
-            when {
-                expression {
-                    return hasTargetHost()
-                }
-            }
-            steps {
-                script {
-                    runRemote('Download latest transaction report', """#!/bin/bash
-                    set -euo pipefail
-
-                    ${fsapCommand('download-input')}
-                    """)
-                }
-            }
-        }
-
-        stage('3. Ingest') {
-            when {
-                expression {
-                    return hasTargetHost()
-                }
-            }
-            steps {
-                script {
-                    runRemote('Ingest one input file', """#!/bin/bash
-                    set -euo pipefail
-
-                    ${fsapCommand('ingest --limit 3')}
-                    """)
-                }
-            }
-        }
-
-        stage('4. Sync Views') {
-            when {
-                expression {
-                    return hasTargetHost()
-                }
-            }
-            steps {
-                script {
-                    runRemote('Import views', """#!/bin/bash
-                    set -euo pipefail
-
-                    ${fsapCommand('sync-views')}
-                    """)
-                }
-            }
-        }
-
-        stage('5. Generate Report') {
+        stage('2. Generate Report') {
             when {
                 expression {
                     return hasTargetHost()
@@ -181,13 +130,29 @@ pipeline {
             }
         }
 
+        stage('3. Upload Report') {
+            when {
+                expression {
+                    return hasTargetHost()
+                }
+            }
+            steps {
+                script {
+                    runRemote('Upload report to SFTP', """#!/bin/bash
+                    set -euo pipefail
+
+                    ${fsapCommand('upload-report')}
+                    """)
+                }
+            }
+        }
     }
 
     post {
         success {
             script {
                 if (hasTargetHost()) {
-                    echo "Daily report flow completed on ${remoteUser}@${params.TARGET_HOST}. Upload is handled by the monthly upload job."
+                    echo "Monthly upload flow completed on ${remoteUser}@${params.TARGET_HOST}"
                 } else if (hasTargetHostParameter()) {
                     echo 'TARGET_HOST is empty. Re-run this job with TARGET_HOST.'
                 } else {
@@ -196,7 +161,7 @@ pipeline {
             }
         }
         failure {
-            echo "Daily report flow failed. Check Jenkins console output and remote logs under ${baseDir}/logs."
+            echo "Monthly upload flow failed. Check Jenkins console output and remote logs under ${baseDir}/logs."
         }
     }
 }

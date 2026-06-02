@@ -1,11 +1,11 @@
 # Java Gradle 建置與離線 Maven Repository 準備流程
 
-更新日期：2026-04-23
+更新日期：2026-06-02
 
 ## 1. 目前建置基準
 
 - Java：17
-- Spring Boot：3.5.6
+- Spring Boot：3.5.14
 - Gradle Wrapper：8.13 all distribution
 - 主要建置檔：`build.gradle`
 - Wrapper 設定：`gradle/wrapper/gradle-wrapper.properties`
@@ -38,8 +38,14 @@ group/id/artifact/version/artifact-version.jar
 group/id/artifact/version/artifact-version.pom
 ```
 
-本專案提供 `prepareOfflineMavenRepo` 與 `zipOfflineMavenRepo`，會把 Gradle 已解析到的 module cache 轉成 Maven layout。
-其中 `.jar`、`.aar` 只會收錄目前專案實際解析到的版本，避免把 Gradle cache 中其他專案或舊版弱點 jar 一起包入；`.pom`、`.module` metadata 會保留，因為 Gradle 離線解析時仍需要 parent POM 與 import BOM。
+本專案提供 `prepareOfflineMavenRepo` 與 `zipOfflineMavenRepo`，會把 Gradle module cache 轉成 Maven layout。
+
+目前處理方式如下：
+
+- `.jar`、`.aar`：只收錄目前專案與 buildscript 實際解析到的 module 版本，避免把 Gradle cache 中其他專案或舊版弱點 jar 一起包入。
+- `.pom`、`.module`：保留 metadata，因為 Gradle 離線解析時仍會讀取 parent POM、import BOM 與 Gradle module metadata。
+- parent POM / import BOM：task 會先從目前解析到的 module 往上補齊 parent POM 與 import BOM；同時保留 metadata，避免像 `commons-parent`、`jackson-base`、`junit-bom` 這類 POM 缺漏造成 `bootJar --offline` 失敗。
+- 輸出格式：全部重排成標準 Maven repository layout，例如 `org/springframework/boot/spring-boot/3.5.14/spring-boot-3.5.14.jar`。
 
 ### 3.1 官方依據
 
@@ -51,9 +57,10 @@ group/id/artifact/version/artifact-version.pom
 因此本專案採用的做法是：
 
 1. 先讓 Gradle 在線上環境解析依賴並寫入 Gradle module cache。
-2. 從 Gradle cache 抽出 `.jar`、`.pom`、`.module`。
-3. 重新排成 Maven repository layout。
-4. 離線建置時用 `maven { url = uri(offlineRepoPath) }` 指向該目錄。
+2. 從 Gradle cache 抽出目前專案需要的 `.jar`、`.aar`。
+3. 保留 `.pom`、`.module` metadata，讓離線解析可讀取 parent POM 與 BOM。
+4. 重新排成 Maven repository layout。
+5. 離線建置時用 `maven { url = uri(offlineRepoPath) }` 指向該目錄，或把 zip 解到 Maven local。
 
 參考：
 
@@ -128,6 +135,13 @@ distributionUrl=file:///opt/fsap/offline-gradle/gradle-8.13-all.zip
 
 ```bash
 ./gradlew --offline -PofflineRepo=/opt/fsap/offline-maven-repo clean bootJar -x test
+```
+
+若不想使用 `-PofflineRepo`，可以把離線 repo 解到原生 Maven local。因為 `build.gradle` 已宣告 `mavenLocal()`，Gradle 離線時會先從 Maven local 找依賴：
+
+```bash
+unzip offline-maven-repo.zip -d ~/.m2/repository
+./gradlew --offline clean bootJar -x test
 ```
 
 若離線環境已經有 Gradle 8.13，也可不用 wrapper：

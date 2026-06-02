@@ -467,7 +467,75 @@ java -jar build/libs/fsap-monitor-util-0.1.0-SNAPSHOT.jar \
 8. `update-monitor-data`
 9. `serve`
 
-## 9. 最終產出整理
+## 9. Jenkins 排程建議
+
+Jenkins 建議拆成兩個 Job，不要每天都上傳彙總報告到 SFTP：
+
+### 9.1 每日資料處理 Job
+
+用途：每天處理來源檔、入庫、同步 view、產生本機彙總報告，但不執行 SFTP 上傳。
+
+建議 Job 名稱：
+
+```text
+fsap-monitor-daily-report
+```
+
+Jenkinsfile：
+
+```text
+Jenkinsfile
+```
+
+建議排程：
+
+```text
+H 8 * * 1-5
+```
+
+實際流程：
+
+1. `doctor`
+2. `download-input`
+3. `ingest --limit 3`
+4. `sync-views`
+5. `generate-report`
+
+這個 Job 不會執行 `upload-report`。如果每天產生報表只是供本機檢查或 Web UI 查詢，使用這個 Job 即可。
+
+### 9.2 月報上傳 Job
+
+用途：只在指定日期或人工確認後，產生最新彙總報告並上傳到最近一次 `download-input` 記錄的 SFTP 目錄。
+
+建議 Job 名稱：
+
+```text
+fsap-monitor-monthly-upload
+```
+
+Jenkinsfile：
+
+```text
+Jenkinsfile.upload
+```
+
+建議排程可依作業規則擇一：
+
+```text
+H 9 1 * *
+```
+
+或不設定排程，改由人工確認後手動執行 Build with Parameters。
+
+實際流程：
+
+1. `doctor`
+2. `generate-report`
+3. `upload-report`
+
+注意：`upload-report` 預設會讀取 `{fsap.paths.base-dir}/logs/latest-sftp-download.json`，因此月報上傳前必須至少成功執行過一次 `download-input`，或在 CLI 上手動指定 `--remote-dir`。
+
+## 10. 最終產出整理
 
 ### 報表產物
 
@@ -509,7 +577,7 @@ logs/
 - `report_execution.log`
 - `query_history.log.jsonl`
 
-## 10. 一套最短可用流程範例
+## 11. 一套最短可用流程範例
 
 如果你只是要快速跑出 Java 版月報，可直接使用：
 
@@ -545,7 +613,7 @@ java -jar build/libs/fsap-monitor-util-0.1.0-SNAPSHOT.jar \
   serve --port 18080
 ```
 
-## 11. 結論
+## 12. 結論
 
 目前 Java 版已可支撐以下主線：
 
