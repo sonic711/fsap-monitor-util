@@ -123,6 +123,84 @@ tasks.register('prepareOfflineMavenRepo') {
         configurations.each(collectResolvedModules)
         buildscript.configurations.each(collectResolvedModules)
 
+        def cachedPom = { String groupId, String artifactId, String versionId ->
+            def moduleDir = new File(cacheRoot, "${groupId}/${artifactId}/${versionId}")
+            if (!moduleDir.isDirectory()) {
+                return null
+            }
+            def pomName = "${artifactId}-${versionId}.pom"
+            def hashDirs = moduleDir.listFiles()
+            if (hashDirs == null) {
+                return null
+            }
+            for (def hashDir : hashDirs) {
+                if (hashDir.isDirectory()) {
+                    def pom = new File(hashDir, pomName)
+                    if (pom.isFile()) {
+                        return pom
+                    }
+                }
+            }
+            return null
+        }
+
+        def pendingModules = new ArrayDeque(selectedModules)
+        while (!pendingModules.isEmpty()) {
+            def moduleKey = pendingModules.removeFirst()
+            def parts = moduleKey.split(':', 3)
+            if (parts.length != 3) {
+                continue
+            }
+
+            def pomFile = cachedPom(parts[0], parts[1], parts[2])
+            if (pomFile == null) {
+                continue
+            }
+
+            def pom = new XmlSlurper(false, false).parse(pomFile)
+            def pomProperties = [:]
+            pom.properties.children().each { property ->
+                pomProperties[property.name().toString()] = property.text()
+            }
+            pomProperties['project.groupId'] = pom.groupId.text() ?: pom.parent.groupId.text()
+            pomProperties['project.artifactId'] = pom.artifactId.text()
+            pomProperties['project.version'] = pom.version.text() ?: pom.parent.version.text()
+            pomProperties['pom.groupId'] = pomProperties['project.groupId']
+            pomProperties['pom.artifactId'] = pomProperties['project.artifactId']
+            pomProperties['pom.version'] = pomProperties['project.version']
+
+            def resolvePomText = { String value ->
+                if (value == null) {
+                    return null
+                }
+                def trimmed = value.trim()
+                def matcher = trimmed =~ /^\$\{(.+)}$/
+                if (matcher.matches()) {
+                    return pomProperties[matcher.group(1)] ?: trimmed
+                }
+                return trimmed
+            }
+
+            def parent = pom.parent
+            if (parent != null && parent.groupId.text() && parent.artifactId.text() && parent.version.text()) {
+                def parentKey = "${resolvePomText(parent.groupId.text())}:${resolvePomText(parent.artifactId.text())}:${resolvePomText(parent.version.text())}".toString()
+                if (selectedModules.add(parentKey)) {
+                    pendingModules.add(parentKey)
+                }
+            }
+
+            pom.dependencyManagement.dependencies.dependency.each { dependency ->
+                def type = resolvePomText(dependency.type.text())
+                def scope = resolvePomText(dependency.scope.text())
+                if (type == 'pom' && scope == 'import') {
+                    def dependencyKey = "${resolvePomText(dependency.groupId.text())}:${resolvePomText(dependency.artifactId.text())}:${resolvePomText(dependency.version.text())}".toString()
+                    if (selectedModules.add(dependencyKey)) {
+                        pendingModules.add(dependencyKey)
+                    }
+                }
+            }
+        }
+
         delete repoDir
         copy {
             from(cacheRoot) {
@@ -143,7 +221,8 @@ tasks.register('prepareOfflineMavenRepo') {
                 def artifactId = segments[1]
                 def versionId = segments[2]
                 def fileName = segments[4]
-                if (!selectedModules.contains("${groupId}:${artifactId}:${versionId}".toString())) {
+                def isMetadata = fileName.endsWith('.pom') || fileName.endsWith('.module')
+                if (!isMetadata && !selectedModules.contains("${groupId}:${artifactId}:${versionId}".toString())) {
                     details.exclude()
                     return
                 }

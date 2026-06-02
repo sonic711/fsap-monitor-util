@@ -39,6 +39,7 @@ group/id/artifact/version/artifact-version.pom
 ```
 
 本專案提供 `prepareOfflineMavenRepo` 與 `zipOfflineMavenRepo`，會把 Gradle 已解析到的 module cache 轉成 Maven layout。
+其中 `.jar`、`.aar` 只會收錄目前專案實際解析到的版本，避免把 Gradle cache 中其他專案或舊版弱點 jar 一起包入；`.pom`、`.module` metadata 會保留，因為 Gradle 離線解析時仍需要 parent POM 與 import BOM。
 
 ### 3.1 官方依據
 
