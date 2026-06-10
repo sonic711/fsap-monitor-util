@@ -1,0 +1,193 @@
+class OfflineMavenRepoExtension {
+    Object outputDir
+    String zipFileName = 'offline-maven-repo.zip'
+    boolean includeBuildscript = true
+    String artifactSelectionMode = 'resolved'
+    List<String> prepareTaskNames = []
+
+    OfflineMavenRepoExtension(Project project) {
+        outputDir = project.layout.buildDirectory.dir('offline-maven-repo')
+    }
+}
+
+def offlineMavenRepo = extensions.create('offlineMavenRepo', OfflineMavenRepoExtension, project)
+
+tasks.register('prepareOfflineMavenRepo') {
+    group = 'offline'
+    description = 'Copies resolved Gradle module cache artifacts into a Maven-layout repository.'
+
+    doLast {
+        def repoDir = project.file(offlineMavenRepo.outputDir)
+        def cacheRoot = new File(gradle.gradleUserHomeDir, 'caches/modules-2/files-2.1')
+
+        if (!cacheRoot.isDirectory()) {
+            throw new GradleException("Gradle module cache not found: ${cacheRoot}")
+        }
+
+        def artifactSelectionMode = offlineMavenRepo.artifactSelectionMode
+        if (!['resolved', 'all-cache'].contains(artifactSelectionMode)) {
+            throw new GradleException("Unsupported offlineMavenRepo.artifactSelectionMode: ${artifactSelectionMode}. Use 'resolved' or 'all-cache'.")
+        }
+
+        def selectedModules = [] as Set
+        if (artifactSelectionMode == 'resolved') {
+            def collectResolvedModules = { configuration ->
+                if (!configuration.canBeResolved) {
+                    return
+                }
+                configuration.incoming.resolutionResult.allComponents.each { component ->
+                    def moduleId = component.moduleVersion
+                    if (moduleId != null) {
+                        selectedModules.add("${moduleId.group}:${moduleId.name}:${moduleId.version}".toString())
+                    }
+                }
+                configuration.resolvedConfiguration.resolvedArtifacts.each { artifact ->
+                    def moduleId = artifact.moduleVersion.id
+                    if (moduleId != null) {
+                        selectedModules.add("${moduleId.group}:${moduleId.name}:${moduleId.version}".toString())
+                    }
+                }
+            }
+
+            project.configurations.each(collectResolvedModules)
+            if (offlineMavenRepo.includeBuildscript) {
+                project.buildscript.configurations.each(collectResolvedModules)
+            }
+        }
+
+        def cachedPom = { String groupId, String artifactId, String versionId ->
+            def moduleDir = new File(cacheRoot, "${groupId}/${artifactId}/${versionId}")
+            if (!moduleDir.isDirectory()) {
+                return null
+            }
+            def pomName = "${artifactId}-${versionId}.pom"
+            def hashDirs = moduleDir.listFiles()
+            if (hashDirs == null) {
+                return null
+            }
+            for (def hashDir : hashDirs) {
+                if (hashDir.isDirectory()) {
+                    def pom = new File(hashDir, pomName)
+                    if (pom.isFile()) {
+                        return pom
+                    }
+                }
+            }
+            return null
+        }
+
+        if (artifactSelectionMode == 'resolved') {
+            def pendingModules = new ArrayDeque(selectedModules)
+            while (!pendingModules.isEmpty()) {
+                def moduleKey = pendingModules.removeFirst()
+                def parts = moduleKey.split(':', 3)
+                if (parts.length != 3) {
+                    continue
+                }
+
+                def pomFile = cachedPom(parts[0], parts[1], parts[2])
+                if (pomFile == null) {
+                    continue
+                }
+
+                def pom = new XmlSlurper(false, false).parse(pomFile)
+                def pomProperties = [:]
+                pom.properties.children().each { property ->
+                    pomProperties[property.name().toString()] = property.text()
+                }
+                pomProperties['project.groupId'] = pom.groupId.text() ?: pom.parent.groupId.text()
+                pomProperties['project.artifactId'] = pom.artifactId.text()
+                pomProperties['project.version'] = pom.version.text() ?: pom.parent.version.text()
+                pomProperties['pom.groupId'] = pomProperties['project.groupId']
+                pomProperties['pom.artifactId'] = pomProperties['project.artifactId']
+                pomProperties['pom.version'] = pomProperties['project.version']
+
+                def resolvePomText = { String value ->
+                    if (value == null) {
+                        return null
+                    }
+                    def trimmed = value.trim()
+                    def matcher = trimmed =~ /^\$\{(.+)}$/
+                    if (matcher.matches()) {
+                        return pomProperties[matcher.group(1)] ?: trimmed
+                    }
+                    return trimmed
+                }
+
+                def parent = pom.parent
+                if (parent != null && parent.groupId.text() && parent.artifactId.text() && parent.version.text()) {
+                    def parentKey = "${resolvePomText(parent.groupId.text())}:${resolvePomText(parent.artifactId.text())}:${resolvePomText(parent.version.text())}".toString()
+                    if (selectedModules.add(parentKey)) {
+                        pendingModules.add(parentKey)
+                    }
+                }
+
+                pom.dependencyManagement.dependencies.dependency.each { dependency ->
+                    def type = resolvePomText(dependency.type.text())
+                    def scope = resolvePomText(dependency.scope.text())
+                    if (type == 'pom' && scope == 'import') {
+                        def dependencyKey = "${resolvePomText(dependency.groupId.text())}:${resolvePomText(dependency.artifactId.text())}:${resolvePomText(dependency.version.text())}".toString()
+                        if (selectedModules.add(dependencyKey)) {
+                            pendingModules.add(dependencyKey)
+                        }
+                    }
+                }
+            }
+        }
+
+        delete repoDir
+        copy {
+            from(cacheRoot) {
+                include '**/*.aar'
+                include '**/*.jar'
+                include '**/*.module'
+                include '**/*.pom'
+            }
+            into(repoDir)
+            eachFile { details ->
+                def segments = details.relativePath.segments
+                if (segments.length < 5) {
+                    details.exclude()
+                    return
+                }
+
+                def groupId = segments[0]
+                def artifactId = segments[1]
+                def versionId = segments[2]
+                def fileName = segments[4]
+                def isMetadata = fileName.endsWith('.pom') || fileName.endsWith('.module')
+                if (artifactSelectionMode == 'resolved' && !isMetadata && !selectedModules.contains("${groupId}:${artifactId}:${versionId}".toString())) {
+                    details.exclude()
+                    return
+                }
+                def targetSegments = groupId.tokenize('.') + [artifactId, versionId, fileName]
+                details.relativePath = new RelativePath(true, targetSegments as String[])
+            }
+            includeEmptyDirs = false
+            duplicatesStrategy = DuplicatesStrategy.INCLUDE
+        }
+
+        logger.lifecycle("Offline Maven repository prepared at: ${repoDir} (artifactSelectionMode=${artifactSelectionMode})")
+    }
+}
+
+tasks.register('zipOfflineMavenRepo', Zip) {
+    group = 'offline'
+    description = 'Packages the prepared offline Maven repository zip.'
+    dependsOn 'prepareOfflineMavenRepo'
+    archiveFileName = offlineMavenRepo.zipFileName
+    destinationDirectory = layout.buildDirectory
+    from({ project.file(offlineMavenRepo.outputDir) })
+}
+
+afterEvaluate {
+    def defaultPrepareTaskNames = ['bootJar', 'jar', 'testClasses']
+    def prepareTaskNames = offlineMavenRepo.prepareTaskNames ?: defaultPrepareTaskNames
+    prepareTaskNames.each { taskName ->
+        if (tasks.findByName(taskName) != null) {
+            tasks.named('prepareOfflineMavenRepo').configure {
+                dependsOn taskName
+            }
+        }
+    }
+}

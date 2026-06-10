@@ -42,10 +42,67 @@ group/id/artifact/version/artifact-version.pom
 
 目前處理方式如下：
 
-- `.jar`、`.aar`：只收錄目前專案與 buildscript 實際解析到的 module 版本，避免把 Gradle cache 中其他專案或舊版弱點 jar 一起包入。
+- `artifactSelectionMode = 'resolved'`：`.jar`、`.aar` 只收錄目前專案與 buildscript 實際解析到的 module 版本，避免把 Gradle cache 中其他專案或舊版弱點 jar 一起包入。這是本專案預設建議模式。
+- `artifactSelectionMode = 'all-cache'`：`.jar`、`.aar`、`.pom`、`.module` 會全部從目前 `GRADLE_USER_HOME/caches/modules-2/files-2.1` 轉成 Maven layout。這適合空專案只拿來轉換一整包 `.gradle` cache 的情境，但也可能把其他專案或舊版弱點 jar 一起包入。
 - `.pom`、`.module`：保留 metadata，因為 Gradle 離線解析時仍會讀取 parent POM、import BOM 與 Gradle module metadata。
 - parent POM / import BOM：task 會先從目前解析到的 module 往上補齊 parent POM 與 import BOM；同時保留 metadata，避免像 `commons-parent`、`jackson-base`、`junit-bom` 這類 POM 缺漏造成 `bootJar --offline` 失敗。
 - 輸出格式：全部重排成標準 Maven repository layout，例如 `org/springframework/boot/spring-boot/3.5.14/spring-boot-3.5.14.jar`。
+
+離線 Maven repo task 已獨立成 Gradle script plugin：
+
+```text
+gradle/offline-maven-repo.gradle
+```
+
+本專案在 `build.gradle` 中用下列方式引入：
+
+```groovy
+apply from: "${rootDir}/gradle/offline-maven-repo.gradle"
+
+offlineMavenRepo {
+    prepareTaskNames = ['bootJar', 'testClasses']
+    artifactSelectionMode = 'resolved'
+}
+```
+
+若要在其他 Gradle 專案使用，可複製 `gradle/offline-maven-repo.gradle`，再於該專案的 `build.gradle` 加上 `apply from`。若其他專案不是 Spring Boot，可改成：
+
+```groovy
+offlineMavenRepo {
+    prepareTaskNames = ['jar', 'testClasses']
+}
+```
+
+若其他專案是空專案，只想把整個 `.gradle` cache 轉成 Maven 離線倉庫，可使用：
+
+```groovy
+apply from: "${rootDir}/gradle/offline-maven-repo.gradle"
+
+offlineMavenRepo {
+    artifactSelectionMode = 'all-cache'
+    prepareTaskNames = []
+}
+```
+
+然後用指定的 Gradle cache 產出：
+
+```bash
+GRADLE_USER_HOME=/path/to/copied/.gradle ./gradlew zipOfflineMavenRepo
+```
+
+注意：`all-cache` 模式會把該 Gradle cache 中所有 jar/aar 都轉出來，適合搬移或轉換一整包 cache，但不適合拿來降低弱掃命中數。
+
+可調整設定：
+
+```groovy
+offlineMavenRepo {
+    outputDir = layout.buildDirectory.dir('offline-maven-repo')
+    zipFileName = 'offline-maven-repo.zip'
+    includeBuildscript = true
+    artifactSelectionMode = 'resolved'
+    prepareTaskNames = ['bootJar', 'testClasses']
+}
+```
 
 ### 3.1 官方依據
 
@@ -57,7 +114,7 @@ group/id/artifact/version/artifact-version.pom
 因此本專案採用的做法是：
 
 1. 先讓 Gradle 在線上環境解析依賴並寫入 Gradle module cache。
-2. 從 Gradle cache 抽出目前專案需要的 `.jar`、`.aar`。
+2. `resolved` 模式會從 Gradle cache 抽出目前專案需要的 `.jar`、`.aar`；`all-cache` 模式會抽出整個 cache 的 `.jar`、`.aar`。
 3. 保留 `.pom`、`.module` metadata，讓離線解析可讀取 parent POM 與 BOM。
 4. 重新排成 Maven repository layout。
 5. 離線建置時用 `maven { url = uri(offlineRepoPath) }` 指向該目錄，或把 zip 解到 Maven local。
