@@ -332,6 +332,39 @@ java -jar build/libs/fsap-monitor-util-0.1.0-SNAPSHOT.jar \
 
 ## 7. 啟動 Web Service
 
+### 7.1 使用 Gradle task 啟動開發環境
+
+專案提供 `bootRunWeb` task，已內建本機開發參數，不需要再透過 Eclipse 傳遞 `--args`：
+
+```bash
+./gradlew bootRunWeb --offline
+```
+
+內建參數等同於：
+
+```text
+--fsap.paths.base-dir=fsap-month-report-develop
+serve
+--port 18080
+--writable
+```
+
+在 Eclipse Buildship 的 Gradle Run Configuration 中設定：
+
+```text
+Gradle Tasks: bootRunWeb
+Arguments: --offline
+```
+
+啟動成功後開啟：
+
+```text
+http://localhost:18080
+http://localhost:18080/health
+```
+
+Gradle task 會保持執行，直到在 Eclipse 按下停止按鈕或在 terminal 按 `Ctrl+C`。
+
 如果你要用 Java Web Dashboard 查詢資料或下載產物：
 
 ```bash

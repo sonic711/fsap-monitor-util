@@ -94,6 +94,17 @@ tasks.named('bootJar') {
     archiveFileName = "${project.name}-${project.version}.jar"
 }
 
+tasks.register('bootRunWeb', org.springframework.boot.gradle.tasks.run.BootRun) {
+    group = 'application'
+    description = 'Starts the FSAP web application with local development settings.'
+    classpath = sourceSets.main.runtimeClasspath
+    mainClass = 'com.fsap.monitor.FsapApplication'
+    args '--fsap.paths.base-dir=fsap-month-report-develop',
+            'serve',
+            '--port', '18080',
+            '--writable'
+}
+
 apply from: "${rootDir}/gradle/offline-maven-repo.gradle"
 
 offlineMavenRepo {
