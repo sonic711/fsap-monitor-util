@@ -20,6 +20,7 @@ buildscript {
 }
 
 apply plugin: 'java'
+apply plugin: 'eclipse'
 apply plugin: 'org.springframework.boot'
 apply plugin: 'io.spring.dependency-management'
 
@@ -103,6 +104,23 @@ tasks.register('bootRunWeb', org.springframework.boot.gradle.tasks.run.BootRun) 
             'serve',
             '--port', '18080',
             '--writable'
+}
+
+tasks.register('bootRunWebDebug', org.springframework.boot.gradle.tasks.run.BootRun) {
+    group = 'application'
+    description = 'Starts the FSAP web application suspended for remote debugging on port 5005.'
+    classpath = sourceSets.main.runtimeClasspath
+    mainClass = 'com.fsap.monitor.FsapApplication'
+    args '--fsap.paths.base-dir=fsap-month-report-develop',
+            'serve',
+            '--port', '18080',
+            '--writable'
+    debugOptions {
+        enabled = true
+        port = 5005
+        server = true
+        suspend = true
+    }
 }
 
 apply from: "${rootDir}/gradle/offline-maven-repo.gradle"

@@ -365,6 +365,38 @@ http://localhost:18080/health
 
 Gradle task 會保持執行，直到在 Eclipse 按下停止按鈕或在 terminal 按 `Ctrl+C`。
 
+### 7.2 使用 Eclipse 斷點除錯
+
+專案已套用 Gradle `eclipse` plugin，可先重新產生或更新 Eclipse project metadata：
+
+```bash
+./gradlew eclipse --offline
+```
+
+需要使用斷點時，執行專用 task：
+
+```text
+Gradle Tasks: bootRunWebDebug
+Arguments: --offline
+```
+
+`bootRunWebDebug` 會先暫停 JVM，等待 Eclipse 連線到：
+
+```text
+Host: localhost
+Port: 5005
+```
+
+在 Eclipse 建立 `Remote Java Application`：
+
+```text
+Project: fsap-monitor-util
+Host: localhost
+Port: 5005
+```
+
+按下 Debug 連線後，Spring Boot 才會繼續啟動，之後即可命中 Eclipse Java 斷點。
+
 如果你要用 Java Web Dashboard 查詢資料或下載產物：
 
 ```bash
