@@ -1,12 +1,12 @@
 # FSAP Python -> Java 全面移植與離線部署實作問題清單
 
-> 狀態更新：v1.1 之後專案已改為 Gradle Wrapper 建置，`pom.xml` 已移除；離線部署改以 Gradle 產出的 Maven repository layout 搭配 `--offline -PofflineRepo=...` 建置。
+> 狀態更新：v1.1 之後專案已改為 Gradle Wrapper 建置，`pom.xml` 已移除；離線部署改以 Gradle 產出的 Maven repository layout 建置，可用 `--offline -PofflineRepo=...` 指向解壓目錄，或解壓到 Maven local。
 
 本文件整理目前專案中所有已識別的 Python 使用點，並將「全面改寫為 Java」與「可完整移植到離線環境」所需先釐清的實作問題彙整成一份 kickoff 清單。
 
 目標不是只列抽象風險，而是把後續真的會卡住設計、開發、測試、交付的決策點先攤開。
 
-補充說明：本文件保留的是 **kickoff 時點的決策與問題盤點紀錄**，不等同於目前版本完成度；目前版本範圍請以 [java-remaining-features.md](/Users/sonic711/Desktop/development/fsap-monitor-util/doc/java-remaining-features.md) 為準。
+補充說明：本文件保留的是 **kickoff 時點的決策與問題盤點紀錄**，不等同於目前版本完成度；目前版本範圍請以 [java-remaining-features](../../AI設計/java-remaining-features.md) 為準。
 
 ---
 
@@ -115,7 +115,7 @@
 2. Java 化是否包含 `scripts/update_monitor_data/update_monitor_data.py` 這個監控資料同步工具？
 3. Java 化是否包含 `scripts/start-fsap-month-report-db.sh` 的啟動行為，改成 Java 啟動器或安裝腳本？
 4. 目標是「完全移除 Python 依賴」，還是允許文件產生、輔助工具暫時保留非 Java 元件？
-5. `doc/install-python.md`、`doc/scripts.md`、`doc/readme.md` 等文件，是否要同步改為 Java / 離線版操作手冊？
+5. 當時的 Python 操作文件是否要同步改為 Java / 離線版操作手冊？目前已分類至 `doc/歷史資產/Python/`，現行入口為 `doc/README.md`。
 
 ### 3.2 資料庫與 SQL 策略
 

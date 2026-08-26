@@ -1,10 +1,10 @@
 # FSAP Maven 專案骨架與 pom 依賴清單
 
-> 狀態：歷史文件。v1.1 之後專案已改為 Gradle Wrapper 建置，Spring Boot 版本改為 `3.5.6`，`pom.xml` 已移除。請不要再依本文件建立或維護 Maven build；實際建置與離線 repository 準備請以 `doc/java-gradle-offline-build.md` 為準。
+> 狀態：歷史文件。專案現行以 Gradle Wrapper 建置，Spring Boot 為 `3.5.14`、Java 為 17，`pom.xml` 已移除。請不要再依本文件建立或維護 Maven build；實際建置與離線 repository 準備請以 `doc/人類部署與建置/Gradle離線建置.md` 為準。
 
 本文件承接以下既有決策：
 
-- 採用 `Java CLI + Spring Boot + Thymeleaf/HTMX + DuckDB JDBC`
+- 現行實作採用 `Java CLI + Spring Boot + Thymeleaf + 原生 JavaScript + Chart.js + DuckDB JDBC`
 - 建置工具採用 `Maven`
 - 保留 `DuckDB`
 - 需支援離線部署
@@ -338,7 +338,7 @@ fsap:
   views:
     max-rounds: 3
   web:
-    readonly: true
+    readonly: false
 ```
 
 ### 9.2 Profile 建議

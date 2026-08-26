@@ -27,7 +27,7 @@
 
 ### 1.2 主框架
 
-- 技術：Spring Boot 3.5.6
+- 技術：Spring Boot 3.5.14
 - 套件：
   - `org.springframework.boot:spring-boot-starter`
   - `org.springframework.boot:spring-boot-starter-web`

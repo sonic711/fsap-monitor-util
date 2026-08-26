@@ -3,7 +3,9 @@ class OfflineMavenRepoExtension {
     String zipFileName = 'offline-maven-repo.zip'
     boolean includeBuildscript = true
     String artifactSelectionMode = 'resolved'
-    List<String> prepareTaskNames = []
+    // null 代表採用預設 task；明確的空清單則代表不執行任何前置 task。
+    // all-cache 模式會用空清單直接轉換既有 Gradle cache。
+    List<String> prepareTaskNames = null
 
     OfflineMavenRepoExtension(Project project) {
         outputDir = project.layout.buildDirectory.dir('offline-maven-repo')
@@ -182,7 +184,9 @@ tasks.register('zipOfflineMavenRepo', Zip) {
 
 afterEvaluate {
     def defaultPrepareTaskNames = ['bootJar', 'jar', 'testClasses']
-    def prepareTaskNames = offlineMavenRepo.prepareTaskNames ?: defaultPrepareTaskNames
+    def prepareTaskNames = offlineMavenRepo.prepareTaskNames != null
+            ? offlineMavenRepo.prepareTaskNames
+            : defaultPrepareTaskNames
     prepareTaskNames.each { taskName ->
         if (tasks.findByName(taskName) != null) {
             tasks.named('prepareOfflineMavenRepo').configure {

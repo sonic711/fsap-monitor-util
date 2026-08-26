@@ -1,6 +1,6 @@
 # FSAP Java 技術選型建議
 
-> 狀態更新：v1.1 之後建置工具已由 Maven 改為 Gradle Wrapper。離線部署仍以 Maven repository layout 提供依賴來源，實際流程請參考 `doc/java-gradle-offline-build.md`。
+> 狀態更新：v1.1 之後建置工具已由 Maven 改為 Gradle Wrapper。離線部署仍以 Maven repository layout 提供依賴來源，實際流程請參考 `doc/人類部署與建置/Gradle離線建置.md`。
 
 本文件基於以下已確認前提提出技術選型建議：
 
@@ -25,7 +25,7 @@
 
 ## 2. 替代方案總覽
 
-### 2.1 方案 A: Spring Boot + Thymeleaf/HTMX
+### 2.1 方案 A: Spring Boot + Thymeleaf + 原生 JavaScript
 
 這是我最推薦的方案。
 
@@ -121,7 +121,7 @@
 
 建議採用：
 
-- **Java CLI + Spring Boot + Thymeleaf/HTMX + DuckDB JDBC**
+- **Java CLI + Spring Boot + Thymeleaf + 原生 JavaScript + Chart.js + DuckDB JDBC**
 
 這條路線可同時覆蓋：
 
@@ -140,7 +140,7 @@
 - Excel / CSV 報表輸出
 - 一個內部用查詢介面
 
-這些需求用 `Spring Boot + Thymeleaf/HTMX` 足以承接，而且部署明顯比 SPA 前端簡單。
+這些需求用 `Spring Boot + Thymeleaf + 原生 JavaScript` 足以承接，而且部署明顯比 SPA 前端簡單。
 
 ---
 
@@ -291,7 +291,7 @@
 
 - `Gradle Wrapper`
 - Gradle：`8.13`
-- Spring Boot：`3.5.6`
+- Spring Boot：`3.5.14`
 - 離線依賴來源：Maven repository layout
 
 原因：
@@ -313,7 +313,7 @@
 | `update_views_to_db.py` | CLI `sync-views` | `picocli` + `DuckDB JDBC` |
 | `step2_report.py` | CLI `generate-report` | `picocli` + `DuckDB JDBC` + `Apache POI` + `Commons CSV` |
 | `api_server.py` | REST API | `Spring Boot Web` |
-| `fsap-month-report-db.py` | Web UI | `Spring Boot` + `Thymeleaf/HTMX` |
+| `fsap-month-report-db.py` | Web UI | `Spring Boot` + `Thymeleaf` + 原生 JavaScript + Chart.js |
 | `update_monitor_data.py` | CLI `update-monitor-data` | `picocli` + `DuckDB JDBC` + `Commons CSV` |
 | `start-fsap-month-report-db.sh` | 啟動腳本 / `serve` 命令 | `java -jar` + `.sh`/`.bat` |
 
@@ -397,15 +397,16 @@ fsap-monitor-util/
 │   │   └── application.yml
 │   └── test/java/...
 ├── config/
-├── 01_excel_input/
-├── 02_source_lake/
-├── 03_sql_logic/
-├── 04_report_output/
-├── 05_database/
-└── logs/
+└── fsap-month-report-develop/
+    ├── 01_excel_input/
+    ├── 02_source_lake/
+    ├── 03_sql_logic/
+    ├── 04_report_output/
+    ├── 05_database/
+    └── logs/
 ```
 
-Java 程式碼與既有資料/SQL/輸出目錄分離，會比把所有東西繼續塞在 `scripts/` 更乾淨。
+Java 程式碼與既有資料/SQL/輸出目錄分離，會比把所有東西繼續塞在 `scripts/` 更乾淨。實際執行時以 `--fsap.paths.base-dir=fsap-month-report-develop` 指向這個資料根目錄。
 
 ---
 
@@ -417,7 +418,7 @@ Java 程式碼與既有資料/SQL/輸出目錄分離，會比把所有東西繼�
 2. **以 Gradle Wrapper 建 Java 專案**
 3. **CLI 採用 picocli**
 4. **Web/API 採用 Spring Boot**
-5. **UI 採用 Thymeleaf/HTMX**
+5. **UI 採用 Thymeleaf + 原生 JavaScript + Chart.js**
 6. **Excel 採用 Apache POI**
 7. **JSON 採用 Jackson**
 8. **CSV 採用 Apache Commons CSV**
@@ -436,15 +437,15 @@ Java 程式碼與既有資料/SQL/輸出目錄分離，會比把所有東西繼�
 
 本文件中的技術選型已完成落地，對應成果如下：
 
-- `Java CLI + Spring Boot + Thymeleaf/HTMX + DuckDB JDBC` 已實作
+- `Java CLI + Spring Boot + Thymeleaf + 原生 JavaScript + Chart.js + DuckDB JDBC` 已實作
 - `Gradle Wrapper` 單模組骨架已建立
-- Spring Boot 已升級為 `3.5.6`
+- Spring Boot 已升級為 `3.5.14`
 - 已提供 `offline-maven-repo.zip` 產生流程
 - `ingest`、`sync-views`、`generate-report`、`update-monitor-data`、`serve`、`doctor` 已可用
 
 後續版本規劃建議如下：
 
-- `v1.1`：補 Web UI 任務操作頁，讓目前 CLI 命令可直接由頁面觸發
+- `v1.1` 的 Web UI 任務操作頁已完成
 - `v1.2+`：再補齊多 Tab 查詢、查詢槽位保存、結果匯出 UI、schema 明細等進階互動體驗
 
 ---

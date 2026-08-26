@@ -3,14 +3,14 @@
 本文件用來定義 Java 版目前可交付範圍，以及後續版本要補的功能。  
 它不再把所有未做項目都視為阻擋 release 的缺口，而是明確分成 `v1.0`、`v1.1`、`v1.2+`。
 
-更新日期：2026-05-26
+更新日期：2026-08-26
 
 ## 目前建置狀態
 
 - 專案目前使用 `Gradle Wrapper 8.13` 建置。
-- Spring Boot 版本為 `3.5.6`。
+- Spring Boot 版本為 `3.5.14`。
 - Maven `pom.xml` 已移除，不再作為現行打包入口。
-- 離線環境若要重新打包，請使用 `offline-maven-repo.zip` 與 `--offline -PofflineRepo=...`，流程見 `doc/java-gradle-offline-build.md`。
+- 離線環境若要重新打包，請使用 `offline-maven-repo.zip`；可透過 `--offline -PofflineRepo=...` 指定解壓目錄，或解壓到 Maven local。流程見 `doc/人類部署與建置/Gradle離線建置.md`。
 
 ## v1.0 定義
 
@@ -46,17 +46,18 @@
 - 在 Web UI 直接觸發 `ingest`
 - 在 Web UI 直接觸發 `generate-report`
 - 在 Web UI 直接觸發 `update-monitor-data`
-- 在 UI 與 CLI 共用 `Generate Report` 參數模型，可調整：
+- UI 與 CLI 共用 `Generate Report` 參數模型；UI 可調整下列月份欄位：
   - `targetMonth`
+  - `historyStartMonth`
+  - `historyEndMonth`
+- CLI 或 API request 另可覆寫下列日期與時間欄位：
   - `rangeStartDate`
   - `rangeEndDate`
   - `rangeStartTime`
   - `rangeEndTime`
-  - `historyStartMonth`
-  - `historyEndMonth`
-  - `previousTargetMonth`
-  - `previousRangeStartTime`
-  - `previousRangeEndTime`
+  - `timestamp`
+  - `continueOnError`
+- `previousTargetMonth`、`previousRangeStartTime`、`previousRangeEndTime` 不是輸入欄位，會由 `targetMonth` 自動推導。
 - `reports/*.sql` 已改為 placeholder render，不必再手改硬編碼月份 / 日期
 - `v_monthly_transaction_stats` 已提供第 8 頁整月統計口徑，供 `8.3` MOM 報表重用
 - 每次產出批次會保存 `report-params.json`
@@ -147,7 +148,7 @@
 
 - `7.x` / `8.x` 報表若要把 `TargetCategory` 也改成 UI/CLI 可控，仍需補白名單參數設計
 
-詳細設計與目前第一版狀態請參考 `doc/java-report-parameterization-plan.md`。
+詳細設計與目前第一版狀態請參考 `doc/AI設計/java-report-parameterization-plan.md`。
 
 ## 結論
 

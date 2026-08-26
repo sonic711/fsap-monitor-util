@@ -36,8 +36,5 @@ fsap-month-report-develop/05_database/*
 !fsap-month-report-develop/05_database/README.md
 fsap-month-report-develop/**/.DS_Store
 
-# Generated / legacy docs
+# Generated documentation output
 doc/html/
-doc/*.md
-!doc/java-*.md
-!doc/maven-project-skeleton-and-pom-dependencies.md

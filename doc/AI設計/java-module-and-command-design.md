@@ -4,7 +4,7 @@
 
 本文件基於以下已確認技術方向整理：
 
-- `Java CLI + Spring Boot + Thymeleaf/HTMX + DuckDB JDBC`
+- `Java CLI + Spring Boot + Thymeleaf + 原生 JavaScript + Chart.js + DuckDB JDBC`
 - 保留 `DuckDB`
 - 保留既有 `03_sql_logic/views/*.sql` 與 `03_sql_logic/reports/*.sql`
 - 目標可部署於離線環境
@@ -446,15 +446,12 @@ java -jar fsap-monitor-util.jar doctor
 | 頁面 | 用途 |
 | :--- | :--- |
 | `query.html` | 主要 Web UI，包含 `Operations`、`Monitor Dashboard`、`Query Console` 頁籤 |
-| `fragments/result-table.html` | 查詢結果表格 |
-| `fragments/schema-tree.html` | schema 側欄 |
-| `fragments/history-list.html` | 查詢歷史 |
 
 `Monitor Dashboard` 目前直接放在 `query.html`，沒有拆獨立 template。它使用本機靜態資源 `static/vendor/chartjs/chart.umd.min.js`，提供 monitor CSV 互動表格與趨勢折線圖。
 
-### 8.3 HTMX 使用範圍
+### 8.3 前端互動實作
 
-建議只用在這些互動：
+目前頁面使用原生 JavaScript `fetch` 呼叫 REST API，並以 Chart.js 顯示監控趨勢；專案未引入 HTMX。若後續導入 HTMX，應只用在下列局部更新情境：
 
 - 提交 SQL 查詢
 - 載入 schema 區塊
@@ -473,13 +470,13 @@ java -jar fsap-monitor-util.jar doctor
 | :--- | :--- |
 | `ProjectPathService` | 管理專案相對路徑 |
 | `DuckDbConnectionFactory` | 建立 DuckDB JDBC 連線 |
-| `ExcelIngestService` | 執行 ingest 主流程 |
+| `IngestService` | 執行 ingest 主流程 |
 | `ViewSyncService` | 執行 view 載入 |
 | `ReportGenerationService` | 執行報表批次 |
 | `QueryService` | 執行查詢與結果封裝 |
 | `SchemaBrowseService` | 讀取資料庫 schema |
-| `MonitorDataService` | 產出監控資料 |
-| `HistoryService` | 寫入與讀取查詢歷史 |
+| `MonitorDataExportService` | 產出 monitor CSV / JS |
+| `QueryHistoryService` | 寫入與讀取查詢歷史 |
 
 ### 9.2 關鍵原則
 
@@ -521,7 +518,7 @@ fsap:
   views:
     max-rounds: 3
   web:
-    readonly: true
+    readonly: false
   monitor:
     config-file: config/monitor-data.json
 ```
@@ -543,10 +540,8 @@ fsap:
 | 檔案 | 是否保留 | 說明 |
 | :--- | :--- | :--- |
 | `logs/ingest.log` | 保留 | ingest 執行紀錄 |
-| `logs/view_sync.log` | 保留 | view 載入紀錄 |
 | `logs/report_execution.log` | 保留 | 報表產出紀錄 |
-| `logs/api_server.log` | 可整併 | 可整併入 Spring Boot log |
-| `logs/sql_history.json` | 保留 | 查詢內容快照 |
+| console log | 保留 | Spring Boot / view 同步等一般應用程式訊息；目前未設定檔案 appender |
 | `logs/query_history.log.jsonl` | 保留 | 查詢歷史 |
 
 ### 11.2 建議原則
