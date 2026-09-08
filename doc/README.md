@@ -1,35 +1,31 @@
 # 文件索引
 
-本目錄依讀者與文件生命週期分類。日常操作請從「人類操作」開始；SQL 與資料口徑請看「人類報表與資料」；設計背景與規劃文件集中於「AI設計」。
+依目前要做的事選一份閱讀，不必從頭讀完所有文件。
 
-## 人類操作
+| 我要做什麼 | 文件 |
+| --- | --- |
+| 啟動服務、匯入 Excel、補歷史缺檔、產生月報 | [啟動與產生報表](人類操作/啟動與產生報表.md) |
+| 從 SFTP 抓來源檔或上傳月報 | [SFTP下載與上傳](人類操作/SFTP下載與上傳.md) |
+| 解決 /tmp 權限問題、調整網頁上傳暫存 | [暫存目錄與上傳設定](人類操作/暫存目錄與上傳設定.md) |
+| 在 Eclipse 開發、設斷點、找修改位置 | [專案維護指引](人類操作/專案維護指引.md) |
+| 打包 JAR 或準備離線建置環境 | [Gradle離線建置](人類部署與建置/Gradle離線建置.md) |
+| 將離線 task 引入其他專案、轉換整份 cache | [Gradle離線Maven倉庫Task](人類部署與建置/Gradle離線Maven倉庫Task.md) |
+| 找報表分頁對應的 SQL、確認月份參數 | [報表SQL說明](人類報表與資料/報表SQL說明.md) |
+| 核對峰日、峰時、平均處理時間的算法 | [報表公式與口徑](人類報表與資料/報表公式與口徑.md) |
 
-- [啟動與產生報表](人類操作/啟動與產生報表.md)
-- [SFTP下載與上傳](人類操作/SFTP下載與上傳.md)
-- [專案維護指引](人類操作/專案維護指引.md)
+## 查資料位置與欄位
 
-## 人類報表與資料
+| 內容 | 文件 |
+| --- | --- |
+| 原始 Excel 放哪裡 | [Excel輸入目錄](人類報表與資料/Excel輸入目錄.md) |
+| 哪些 Excel 分頁會被匯入、使用 | [每日交易統計資料說明](人類報表與資料/每日交易統計資料說明.md) |
+| 欄位字典 | [資料結構說明](人類報表與資料/資料結構說明.md) |
+| 交易名稱與主機對照檔 | [參考資料說明](人類報表與資料/參考資料說明.md) |
+| View 的來源與用途 | [ViewSQL說明](人類報表與資料/ViewSQL說明.md) |
+| SQL 放置與更新方式 | [SQL邏輯目錄](人類報表與資料/SQL邏輯目錄.md) |
+| Excel、CSV 與批次參數 | [報表輸出目錄](人類報表與資料/報表輸出目錄.md) |
+| DB 與外部資料的關係、備份範圍 | [DuckDB資料庫](人類報表與資料/DuckDB資料庫.md) |
 
-- [報表SQL說明](人類報表與資料/報表SQL說明.md)
-- [報表公式與口徑](人類報表與資料/報表公式與口徑.md)
-- [ViewSQL說明](人類報表與資料/ViewSQL說明.md)
-- [SQL邏輯目錄](人類報表與資料/SQL邏輯目錄.md)
-- [資料結構說明](人類報表與資料/資料結構說明.md)
-- [每日交易統計資料說明](人類報表與資料/每日交易統計資料說明.md)
+## 設計與歷史文件
 
-## 人類部署與建置
-
-- [Gradle離線建置](人類部署與建置/Gradle離線建置.md)
-- [Gradle離線Maven倉庫Task](人類部署與建置/Gradle離線Maven倉庫Task.md)
-
-## AI設計
-
-- [java-key-technologies-by-flow](AI設計/java-key-technologies-by-flow.md)
-- [java-module-and-command-design](AI設計/java-module-and-command-design.md)
-- [java-report-parameterization-plan](AI設計/java-report-parameterization-plan.md)
-- [java-remaining-features](AI設計/java-remaining-features.md)
-- [java-technology-selection](AI設計/java-technology-selection.md)
-
-## 歷史資產
-
-Python 腳本及其文件、Maven 初版規劃與遷移期間的討論紀錄均已移至 [歷史資產](歷史資產/)。這些內容只供追溯與舊版比對，不是現行操作依據。
+[AI設計](AI設計/) 保留英文檔名，供程式設計與規劃查閱。[歷史資產](歷史資產/歷史資產說明.md) 包含 Python 舊版文件、Maven 初版規劃及遷移紀錄，不作為現行操作依據。Python 腳本仍保留在原位置，方便追溯。

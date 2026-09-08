@@ -1,6 +1,4 @@
-# Gradle Offline Maven Repo Task 使用指南
-
-更新日期：2026-06-09
+# 引入離線 Maven 倉庫 Task
 
 本文件說明如何把本專案的離線 Maven repository 轉換 task 引入其他 Gradle 專案，並產出可供離線建置使用的 Maven layout 壓縮檔。
 
@@ -49,7 +47,7 @@ zipOfflineMavenRepo
 
 `resolved` 是預設模式，只打包目前專案實際解析到的 `.jar` / `.aar`，並保留 `.pom` / `.module` metadata。
 
-適合正式專案產生最小可用離線包：
+適合依正式專案目前解析的版本產生離線包：
 
 ```groovy
 offlineMavenRepo {
@@ -175,21 +173,12 @@ repositories {
 }
 ```
 
-## 7. 驗證離線包
+## 7. 驗證與限制
 
-產生後建議用乾淨 Gradle cache 驗證：
+使用 [Gradle離線建置](Gradle離線建置.md#4-驗證離線包是否完整) 的乾淨 cache 流程驗證，並將範例的 `bootJar` 換成目標專案實際需要的 task。
 
-```bash
-rm -rf /tmp/fsap-offline-check
-mkdir -p /tmp/fsap-offline-check/repo
-mkdir -p /tmp/fsap-offline-check/gradle-user-home
-
-unzip -q build/offline-maven-repo.zip -d /tmp/fsap-offline-check/repo
-
-GRADLE_USER_HOME=/tmp/fsap-offline-check/gradle-user-home \
-./gradlew --offline \
-  -PofflineRepo=/tmp/fsap-offline-check/repo \
-  bootJar -x test --rerun-tasks
-```
-
-如果這一步成功，代表 Maven 離線包可支援目前專案重新打包。
+- `prepareTaskNames = []` 代表不先執行任何建置 task，適合空專案轉 cache。
+- `all-cache` 只轉換指定 cache 已有的 JAR、AAR、POM、module，不會補出未曾下載的檔案，也不包含 Gradle distribution 或其他工具 cache。
+- 引入此 script 只新增兩個倉庫 task，不會新增本專案的 `downloadGradleDistribution` 或 `prepareOfflineBundle`。
+- `-PofflineRepo` 需目標專案自行讀取與設定。使用 `plugins {}` 的專案，還需在 `settings.gradle` 的 `pluginManagement.repositories` 指向離線倉庫，並備妥 plugin marker 與插件依賴。
+- 產生 ZIP 成功只代表轉換完成，仍需實際離線建置驗證。

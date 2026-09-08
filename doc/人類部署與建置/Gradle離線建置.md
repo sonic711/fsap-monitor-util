@@ -1,237 +1,87 @@
-# Java Gradle 建置與離線 Maven Repository 準備流程
+# Gradle 離線建置
 
-更新日期：2026-06-02
+執行既有 JAR 只需 Java 17。以下步驟適用於「離線環境仍需要從原始碼建置」；需要 **JDK 17、Gradle 8.13、原始碼與 Maven 離線倉庫**。
 
-## 1. 目前建置基準
+## 1. 線上準備
 
-- Java：17
-- Spring Boot：3.5.14
-- Gradle Wrapper：8.13 all distribution
-- 主要建置檔：`build.gradle`
-- Wrapper 設定：`gradle/wrapper/gradle-wrapper.properties`
-- 輸出 JAR：`build/libs/fsap-monitor-util-0.1.0-SNAPSHOT.jar`
-
-本專案已改為 Gradle 專案，不再使用 `pom.xml` 打包。
-
-## 2. 線上環境打包
-
-在有網路的環境執行：
-
-```bash
-./gradlew clean bootJar -x test
-```
-
-完成後可用下列方式啟動：
-
-```bash
-java -jar build/libs/fsap-monitor-util-0.1.0-SNAPSHOT.jar --help
-```
-
-## 3. 是否可以用 Gradle 產出 Maven 離線倉庫
-
-可以。
-
-但重點是：不能把 Gradle cache 原封不動當 Maven repository。離線環境若要用 Maven repository 形式解析依賴，必須準備 Maven repository layout：
-
-```text
-group/id/artifact/version/artifact-version.jar
-group/id/artifact/version/artifact-version.pom
-```
-
-本專案提供 `prepareOfflineMavenRepo` 與 `zipOfflineMavenRepo`，會把 Gradle module cache 轉成 Maven layout。
-
-目前處理方式如下：
-
-- `artifactSelectionMode = 'resolved'`：`.jar`、`.aar` 只收錄目前專案與 buildscript 實際解析到的 module 版本，避免把 Gradle cache 中其他專案或舊版弱點 jar 一起包入。這是本專案預設建議模式。
-- `artifactSelectionMode = 'all-cache'`：`.jar`、`.aar`、`.pom`、`.module` 會全部從目前 `GRADLE_USER_HOME/caches/modules-2/files-2.1` 轉成 Maven layout。這適合空專案只拿來轉換一整包 `.gradle` cache 的情境，但也可能把其他專案或舊版弱點 jar 一起包入。
-- `.pom`、`.module`：保留 metadata，因為 Gradle 離線解析時仍會讀取 parent POM、import BOM 與 Gradle module metadata。
-- parent POM / import BOM：task 會先從目前解析到的 module 往上補齊 parent POM 與 import BOM；同時保留 metadata，避免像 `commons-parent`、`jackson-base`、`junit-bom` 這類 POM 缺漏造成 `bootJar --offline` 失敗。
-- 輸出格式：全部重排成標準 Maven repository layout，例如 `org/springframework/boot/spring-boot/3.5.14/spring-boot-3.5.14.jar`。
-
-離線 Maven repo task 已獨立成 Gradle script plugin：
-
-```text
-gradle/offline-maven-repo.gradle
-```
-
-本專案在 `build.gradle` 中用下列方式引入：
-
-```groovy
-apply from: "${rootDir}/gradle/offline-maven-repo.gradle"
-
-offlineMavenRepo {
-    prepareTaskNames = ['bootJar', 'testClasses']
-    artifactSelectionMode = 'resolved'
-}
-```
-
-若要在其他 Gradle 專案使用，可複製 `gradle/offline-maven-repo.gradle`，再於該專案的 `build.gradle` 加上 `apply from`。若其他專案不是 Spring Boot，可改成：
-
-```groovy
-offlineMavenRepo {
-    prepareTaskNames = ['jar', 'testClasses']
-}
-```
-
-若其他專案是空專案，只想把整個 `.gradle` cache 轉成 Maven 離線倉庫，可使用：
-
-```groovy
-apply from: "${rootDir}/gradle/offline-maven-repo.gradle"
-
-offlineMavenRepo {
-    artifactSelectionMode = 'all-cache'
-    prepareTaskNames = []
-}
-```
-
-然後用指定的 Gradle cache 產出：
-
-```bash
-GRADLE_USER_HOME=/path/to/copied/.gradle ./gradlew zipOfflineMavenRepo
-```
-
-注意：`all-cache` 模式會把該 Gradle cache 中所有 jar/aar 都轉出來，適合搬移或轉換一整包 cache，但不適合拿來降低弱掃命中數。
-
-可調整設定：
-
-```groovy
-offlineMavenRepo {
-    outputDir = layout.buildDirectory.dir('offline-maven-repo')
-    zipFileName = 'offline-maven-repo.zip'
-    includeBuildscript = true
-    artifactSelectionMode = 'resolved'
-    prepareTaskNames = ['bootJar', 'testClasses']
-}
-```
-
-### 3.1 官方依據
-
-- Gradle 官方文件說明可宣告本機 Maven repository，例如 `maven { url = uri("/path/to/local/repo") }`。
-- Maven 官方文件定義 Maven repository layout：`groupId` 需把 `.` 轉成 `/`，再接 `artifactId/version/artifact-version.ext`。
-- Maven 官方文件也說明，不符合 layout 的檔案無法用 Maven coordinates 定位。
-- Gradle 官方文件另有說明 dependency cache 可以複製與重用，但那是 Gradle cache 用途，不等同於 Maven repository。
-
-因此本專案採用的做法是：
-
-1. 先讓 Gradle 在線上環境解析依賴並寫入 Gradle module cache。
-2. `resolved` 模式會從 Gradle cache 抽出目前專案需要的 `.jar`、`.aar`；`all-cache` 模式會抽出整個 cache 的 `.jar`、`.aar`。
-3. 保留 `.pom`、`.module` metadata，讓離線解析可讀取 parent POM 與 BOM。
-4. 重新排成 Maven repository layout。
-5. 離線建置時用 `maven { url = uri(offlineRepoPath) }` 指向該目錄，或把 zip 解到 Maven local。
-
-參考：
-
-- `https://docs.gradle.org/current/userguide/declaring_repositories_basics.html`
-- `https://docs.gradle.org/current/userguide/supported_repository_types.html`
-- `https://docs.gradle.org/current/userguide/dependency_caching.html`
-- `https://maven.apache.org/repositories/layout.html`
-
-## 4. 建議的線上準備方式
-
-建議使用專案內獨立的 Gradle cache，避免把本機其他專案的依賴一起包進去：
-
-```bash
-GRADLE_USER_HOME=$PWD/.gradle-online ./gradlew clean bootJar testClasses zipOfflineMavenRepo
-```
-
-產物位置：
-
-```text
-build/offline-maven-repo/
-build/offline-maven-repo.zip
-```
-
-如果離線環境無法下載 Gradle wrapper distribution，線上環境也要先下載：
-
-```bash
-GRADLE_USER_HOME=$PWD/.gradle-online ./gradlew downloadGradleDistribution
-```
-
-產物位置：
-
-```text
-build/offline-gradle/gradle-8.13-all.zip
-```
-
-也可以一次準備 Maven repo zip 與 Gradle distribution：
+在專案根目錄執行：
 
 ```bash
 GRADLE_USER_HOME=$PWD/.gradle-online ./gradlew prepareOfflineBundle
 ```
 
-## 5. 搬到離線環境需要的檔案
+| 產物 | 用途 |
+| --- | --- |
+| `build/offline-maven-repo.zip` | 套件及 buildscript 插件依賴，已整理成 Maven 目錄 |
+| `build/offline-gradle/gradle-8.13-all.zip` | Gradle 執行工具本身 |
+| `build/libs/fsap-monitor-util-0.1.0-SNAPSHOT.jar` | 本專案的可執行 JAR |
 
-若離線環境沒有預先安裝 Gradle 8.13，最少需要：
+只要 Maven 倉庫可執行 `zipOfflineMavenRepo`；只缺 Gradle ZIP 可執行 `downloadGradleDistribution`。
 
-- 專案原始碼
-- `gradlew`
-- `gradlew.bat`
-- `gradle/wrapper/gradle-wrapper.jar`
-- `gradle/wrapper/gradle-wrapper.properties`
-- `build/offline-maven-repo.zip`
-- `build/offline-gradle/gradle-8.13-all.zip`
-- Java 17 Runtime 或 JDK
+預設 `resolved` 模式只挑目前專案及 buildscript 解析到的 JAR/AAR，但保留 cache 中的 POM/module 描述檔，並補齊可解析的 parent POM 與 BOM。它不是整份 `.gradle` 備份，也不保證倉庫沒有 CVE。
 
-如果離線環境已經預先安裝乾淨可用的 Gradle 8.13，則 `gradle-8.13-all.zip` 可省略，也可以直接用系統 `gradle` 指令打包。
+要把 task 引入其他專案，或轉換整份 cache，請看 [離線Maven倉庫Task](Gradle離線Maven倉庫Task.md)。
 
-## 6. 離線環境建置
+## 2. 搬到離線主機
 
-先解壓 Maven repository：
+搬移原始碼（含 `gradlew`、`gradlew.bat`、`gradle/wrapper/`）、兩份 ZIP，並準備 JDK 17。
 
-```bash
-unzip offline-maven-repo.zip -d offline-maven-repo
-```
-
-若 wrapper 不能連網下載 Gradle，請將 `gradle-8.13-all.zip` 放在離線機器可讀位置，並把 `gradle/wrapper/gradle-wrapper.properties` 的 `distributionUrl` 改為 file URL，例如：
-
-```properties
-distributionUrl=file:///opt/fsap/offline-gradle/gradle-8.13-all.zip
-```
-
-再使用離線 Maven repo 建置：
+以下假設 ZIP 放在 `/opt/fsap/offline/`。將 Maven 倉庫解壓到專案 `build/` 以外，避免 `clean` 把它刪除：
 
 ```bash
-./gradlew --offline -PofflineRepo=/opt/fsap/offline-maven-repo clean bootJar -x test
+unzip /opt/fsap/offline/offline-maven-repo.zip -d /opt/fsap/offline/repo
 ```
 
-若不想使用 `-PofflineRepo`，可以把離線 repo 解到原生 Maven local。因為 `build.gradle` 已宣告 `mavenLocal()`，Gradle 離線時會先從 Maven local 找依賴：
+Gradle ZIP 有兩種用法，擇一即可：
+
+| 用法 | 設定 |
+| --- | --- |
+| 使用專案 Wrapper | 將 `gradle/wrapper/gradle-wrapper.properties` 的 `distributionUrl` 改為 `file:///opt/fsap/offline/gradle-8.13-all.zip`，ZIP 不必手動解壓 |
+| 直接使用 Gradle | 將 ZIP 解壓到工具目錄，使用其中 `gradle-8.13/bin/gradle` |
+
+`--offline` 不會替 Wrapper 準備 Gradle 本身；必須先完成上述其中一種設定。
+
+## 3. 離線打包
+
+在專案根目錄執行：
 
 ```bash
-unzip offline-maven-repo.zip -d ~/.m2/repository
-./gradlew --offline clean bootJar -x test
+./gradlew --offline -PofflineRepo=/opt/fsap/offline/repo clean bootJar
 ```
 
-若離線環境已經有 Gradle 8.13，也可不用 wrapper：
+Windows 使用 `gradlew.bat`，並將倉庫路徑改成 Windows 絕對路徑。完成後 JAR 位於 `build/libs/`。
+
+本專案已在一般依賴與 buildscript 宣告 `mavenLocal()`。若不想每次指定 `-PofflineRepo`，可將 ZIP 內容解到 `~/.m2/repository` 後執行：
 
 ```bash
-gradle --offline -PofflineRepo=/opt/fsap/offline-maven-repo clean bootJar -x test
+./gradlew --offline clean bootJar
 ```
 
-Windows 範例：
+兩種方式擇一。調整其他專案時，需同時設定它自己的插件與一般套件倉庫，不能只複製這條指令。
 
-```bat
-gradlew.bat --offline -PofflineRepo=C:\fsap\offline-maven-repo clean bootJar -x test
-```
+## 4. 驗證離線包是否完整
 
-## 7. 驗證離線包是否完整
-
-在線上環境產出 `offline-maven-repo.zip` 後，建議立刻用乾淨 Gradle cache 驗證一次：
+在原始碼副本測試，使用空白 Gradle cache，並避免共用 Maven local 掩蓋缺漏。下列範例使用本機解壓的 Gradle，避免 Wrapper 再連網下載。先將 ZIP 放在上述 `/opt/fsap/offline/`。
 
 ```bash
-mkdir -p /tmp/fsap-gradle-offline-check
-rm -rf /tmp/fsap-offline-maven-repo
-mkdir -p /tmp/fsap-offline-maven-repo
-unzip -q build/offline-maven-repo.zip -d /tmp/fsap-offline-maven-repo
-GRADLE_USER_HOME=/tmp/fsap-gradle-offline-check ./gradlew --offline -PofflineRepo=/tmp/fsap-offline-maven-repo bootJar -x test --rerun-tasks
+checkDir=$(mktemp -d "$PWD/offline-check.XXXXXX")
+unzip -q /opt/fsap/offline/offline-maven-repo.zip -d "$checkDir/repo"
+unzip -q /opt/fsap/offline/gradle-8.13-all.zip -d "$checkDir/tool"
+GRADLE_USER_HOME="$checkDir/gradle-home" \
+  "$checkDir/tool/gradle-8.13/bin/gradle" \
+  --offline -Dmaven.repo.local="$checkDir/empty-maven-local" \
+  -PofflineRepo="$checkDir/repo" bootJar --rerun-tasks
 ```
 
-如果這一步成功，代表離線 Maven repository 至少已涵蓋目前打包所需依賴。
+成功表示離線包涵蓋此次 `bootJar` 所需依賴；若還要離線執行測試或其他 task，需另驗證那些 task。此檢查目錄須位於允許執行工具的掛載點。
 
-注意：不要在驗證時直接把 `-PofflineRepo` 指到 `build/offline-maven-repo` 再執行 `clean`，因為 `clean` 會刪除 `build/`，連同剛產生的離線 repo 一起移除。
+## 常見問題
 
-## 8. 注意事項
+| 現象 | 處理 |
+| --- | --- |
+| 找不到 `gradle-8.13-all.zip` | 執行 `downloadGradleDistribution`，或檢查 bundle task 是否失敗 |
+| 插件或 parent POM 找不到 | 檢查 buildscript 倉庫與 metadata；重新在線上產包並用乾淨 cache 驗證 |
+| 執行 clean 後倉庫消失 | 將 repo 搬到 `build/` 外 |
+| 改版後離線失敗 | 新增或升級依賴、插件後，重新產生離線包 |
 
-- 不要使用動態版本，例如 `latest.release` 或 `1.+`，否則離線解析會不穩定。
-- 若新增 dependency、升級 Spring Boot 或 Gradle plugin，需要重新產出 `offline-maven-repo.zip`。
-- Gradle wrapper distribution 與 Maven dependency repository 是兩件事；離線環境兩者都要能取得。
-- `prepareOfflineMavenRepo` 會從目前 `GRADLE_USER_HOME` 複製 Gradle module cache，因此建議搭配專用 `.gradle-online` 目錄使用。
+僅線上建置 JAR 可執行 `./gradlew bootJar`。服務操作見 [啟動與產生報表](../人類操作/啟動與產生報表.md)。
