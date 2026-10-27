@@ -56,6 +56,8 @@ fsap upload-report
 
 預設選取最新報表批次中的 Excel，上傳到最近一次成功下載的來源目錄。目的地記錄在 `<base-dir>/logs/latest-sftp-download.json` 的 `remoteDirectory`，不會按報表月份自動重新選擇。
 
+新版選取批次根目錄的 `維運月度報表_MM月彙總_<執行時間>.xlsx`，內容是總覽與各分類的跨分類正式月報（原「比較_彙總」）。不會自動上傳 `SUM/` 的 ALL 原始彙總或分類子目錄。只產 ALL 或停用比較時，根目錄檔案改用 ALL 彙總。
+
 要補發特定報表時，明確指定完整本機路徑與目的地：
 
 ```bash

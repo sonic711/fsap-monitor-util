@@ -7,6 +7,7 @@ import java.math.BigInteger;
 import java.nio.charset.StandardCharsets;
 import java.nio.file.Files;
 import java.nio.file.Path;
+import java.nio.file.StandardCopyOption;
 import java.nio.file.StandardOpenOption;
 import java.sql.Connection;
 import java.sql.ResultSet;
@@ -63,7 +64,7 @@ public class ReportGenerationService {
     private static final String REPORT_PARAMS_FILE = "report-params.json";
     private static final String NO_DATA_MESSAGE_HEADER = "Message";
     private static final String WORKBOOK_PREFIX = "維運月度報表_";
-    private static final String COMPARISON_DIRECTORY = "REPORT";
+    private static final String SUMMARY_DIRECTORY = "SUM";
     private static final DateTimeFormatter REPORT_MONTH_FORMAT = DateTimeFormatter.ofPattern("MM'月'");
     private static final Pattern REPORT_ORDER_PREFIX = Pattern.compile("^(\\d+(?:\\.\\d+)*)\\.?\\s*");
     private static final Pattern REPORT_PARAMETER_PATTERN = Pattern.compile("\\$\\{([a-zA-Z][a-zA-Z0-9]*)}");
@@ -165,7 +166,13 @@ public class ReportGenerationService {
             }
 
             if (fatalFailure == null && !bzkinds.isEmpty()) {
-                comparisonWorkbookPath = writeComparisonWorkbook(runDirectory, timestamp, tablesByPass, bzkinds, notices);
+                comparisonWorkbookPath = writeComparisonWorkbook(runDirectory, effectiveRequest, timestamp, tablesByPass, bzkinds, notices);
+            }
+            if (fatalFailure == null && failures.isEmpty() && comparisonWorkbookPath == null) {
+                // 未產出跨分類比較時，仍保留根目錄正式月報，供網頁下載與 SFTP 上傳。
+                Path summaryWorkbook = runDirectory.resolve(SUMMARY_DIRECTORY).resolve(workbookPath.getFileName());
+                Files.copy(summaryWorkbook, workbookPath, StandardCopyOption.REPLACE_EXISTING);
+                logExecution("[正式月報] 未產出比較活頁簿，改用 ALL 彙總: " + workbookPath.getFileName());
             }
         } catch (RuntimeException exception) {
             throw exception;
@@ -188,7 +195,7 @@ public class ReportGenerationService {
 
     /**
      * 以指定的業務分類（ALL 表示不篩選）執行全部報表 SQL，寫出該輪的 CSV 與彙總 workbook。
-     * ALL 放在批次目錄第一層，各分類放在以分類代碼命名的子目錄。
+     * ALL 放在 SUM 子目錄，各分類放在以分類代碼命名的子目錄。
      */
     private PassRun runPass(
             Connection connection,
@@ -199,9 +206,9 @@ public class ReportGenerationService {
             List<Path> reportFiles
     ) throws Exception {
         boolean allPass = BzkindSelection.ALL.equals(bzkind);
-        Path passDirectory = allPass ? runDirectory : runDirectory.resolve(bzkind);
+        Path passDirectory = runDirectory.resolve(allPass ? SUMMARY_DIRECTORY : bzkind);
         Path workbookPath = passDirectory.resolve(workbookFileName(request, timestamp, bzkind));
-        String label = allPass ? "" : bzkind + "/";
+        String label = (allPass ? SUMMARY_DIRECTORY : bzkind) + "/";
         Files.createDirectories(passDirectory);
 
         logExecution("--- 業務分類: " + bzkind + " ---");
@@ -288,6 +295,7 @@ public class ReportGenerationService {
 
     private Path writeComparisonWorkbook(
             Path runDirectory,
+            ReportGenerationRequest request,
             String timestamp,
             Map<String, Map<String, QueryTable>> tablesByPass,
             List<String> bzkinds,
@@ -306,9 +314,7 @@ public class ReportGenerationService {
             return null;
         }
 
-        Path directory = runDirectory.resolve(COMPARISON_DIRECTORY);
-        Files.createDirectories(directory);
-        Path workbookPath = directory.resolve(config.getFilename() + "_" + timestamp + ".xlsx");
+        Path workbookPath = runDirectory.resolve(workbookFileName(request, timestamp, BzkindSelection.ALL));
         try (XSSFWorkbook workbook = new XSSFWorkbook()) {
             WorkbookStyles workbookStyles = createWorkbookStyles(workbook);
             for (ComparisonWorkbookPlanner.SheetPlan sheet : plan.sheets()) {
@@ -318,7 +324,7 @@ public class ReportGenerationService {
                 workbook.write(outputStream);
             }
         }
-        logExecution("[比較活頁簿] " + COMPARISON_DIRECTORY + "/" + workbookPath.getFileName() + "（" + plan.sheets().size() + " 個分頁）");
+        logExecution("[比較活頁簿] " + workbookPath.getFileName() + "（" + plan.sheets().size() + " 個分頁）");
         return workbookPath;
     }
 

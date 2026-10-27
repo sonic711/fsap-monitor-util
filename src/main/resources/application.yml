@@ -46,16 +46,19 @@ fsap:
       - NIS
       - FSAP
     combined-workbook:
-      filename: 比較_彙總
       all-sheets:
         - sheet-name: 總覽-交易量統計
           data-source: 1.交易量統計-當月.csv
         - sheet-name: 總覽-當月每日
-          data-source: 2.交易量統計-當月每日.csv
+          data-source: 2.1.交易量統計-當月每日-Pivot.csv
         - sheet-name: 總覽-峰日峰時
-          data-source: 3.交易量統計-峰日峰時.csv
+          data-source: 3.1.交易量統計-峰日峰時-Pivot.csv
         - sheet-name: 總覽-歷史月總量
           data-source: 4.交易量統計-歷史月總量.csv
+        - sheet-name: 總覽-歷史峰日
+          data-source: 5.1.交易量統計-歷史峰日-Pivot.csv
+        - sheet-name: 總覽-歷史峰日峰時
+          data-source: 6.1.交易量統計-歷史峰日峰時-Pivot.csv
         - sheet-name: 總覽-MOM交易量比較
           data-source: 8.3.交易量統計-MOM交易量比較.csv
       bzkinds:
@@ -69,9 +72,13 @@ fsap:
         - sheet-name: "{pr_bzkind}-交易量統計"
           data-source: 1.交易量統計-當月.csv
         - sheet-name: "{pr_bzkind}-當月每日"
-          data-source: 2.交易量統計-當月每日.csv
+          data-source: 2.1.交易量統計-當月每日-Pivot.csv
         - sheet-name: "{pr_bzkind}-峰日峰時"
-          data-source: 3.交易量統計-峰日峰時.csv
+          data-source: 3.1.交易量統計-峰日峰時-Pivot.csv
+        - sheet-name: "{pr_bzkind}-歷史峰日"
+          data-source: 5.1.交易量統計-歷史峰日-Pivot.csv
+        - sheet-name: "{pr_bzkind}-歷史峰日峰時"
+          data-source: 6.1.交易量統計-歷史峰日峰時-Pivot.csv
         - sheet-name: "{pr_bzkind}-TOP6交易類"
           data-source: 7.1.交易量統計-TOP6交易類.csv
         - sheet-name: "{pr_bzkind}-TOP6查詢類"

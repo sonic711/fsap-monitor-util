@@ -173,18 +173,9 @@ public class FsapProperties {
      * allSheets 與 reports 都是空的就不產出比較活頁簿。
      */
     public static class CombinedWorkbook {
-        private String filename = "比較_彙總";
         private List<SheetSpec> allSheets = new ArrayList<>();
         private List<String> bzkinds = new ArrayList<>();
         private List<SheetSpec> reports = new ArrayList<>();
-
-        public String getFilename() {
-            return filename;
-        }
-
-        public void setFilename(String filename) {
-            this.filename = filename;
-        }
 
         public List<SheetSpec> getAllSheets() {
             return allSheets;
