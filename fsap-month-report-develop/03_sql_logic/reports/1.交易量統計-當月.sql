@@ -1,6 +1,7 @@
 WITH Config AS (
     --  步驟 0：【參數控制台】未來換月或換系統，只要改這裡的 3 行就好！
     SELECT 
+        '${targetBzkind}' AS target_bzkind,   -- 業務分類（ALL＝不篩選）
         '${targetMonth}' AS target_month,       -- 指定要查詢的年月
         'FAC2FAS' AS exclude_pr_id,             -- 指定要排除的交易代碼
         '金融服務應用平台 FSAP' AS report_sys_name -- 報表上要顯示的系統名稱
@@ -14,6 +15,7 @@ FSAP_Daily AS (
     CROSS JOIN Config c  --  呼叫參數
     WHERE d.tx_yyyymm = c.target_month 
       AND d.PR_ID != c.exclude_pr_id
+      AND (c.target_bzkind = 'ALL' OR d.pr_bzkind = c.target_bzkind)
     GROUP BY d.tx_dt_str
 ),
 FSAP_PeakDay AS (
@@ -35,6 +37,7 @@ FSAP_PeakHour AS (
     JOIN FSAP_PeakDay p ON h.tx_dt_str = p."峰日日期"
     CROSS JOIN Config c  --  再次呼叫參數
     WHERE h.PR_ID != c.exclude_pr_id
+    AND (c.target_bzkind = 'ALL' OR h.pr_bzkind = c.target_bzkind)
     GROUP BY h.tx_hour
     ORDER BY SUM(h.tx_cnt) DESC
     LIMIT 1

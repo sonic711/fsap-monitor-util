@@ -652,6 +652,10 @@
                                     History Month End
                                     <input id="report-history-end-month" type="month" th:value="${reportDefaults.historyEndMonth}">
                                 </label>
+                                <label>
+                                    Business Kinds (besides ALL)
+                                    <input id="report-target-bzkinds" type="text" placeholder="NCL,NIS" th:value="${#strings.listJoin(reportDefaults.targetBzkinds, ',')}">
+                                </label>
                                 <label class="inline-check">
                                     <input id="report-continue" type="checkbox">
                                     Continue on error
@@ -923,7 +927,8 @@ async function startGenerateReport() {
             continueOnError: document.getElementById("report-continue").checked,
             targetMonth: trimToNull(document.getElementById("report-target-month").value),
             historyStartMonth: trimToNull(document.getElementById("report-history-start-month").value),
-            historyEndMonth: trimToNull(document.getElementById("report-history-end-month").value)
+            historyEndMonth: trimToNull(document.getElementById("report-history-end-month").value),
+            targetBzkinds: document.getElementById("report-target-bzkinds").value
         });
     } catch (error) {
         // Feedback is already rendered in postTask.

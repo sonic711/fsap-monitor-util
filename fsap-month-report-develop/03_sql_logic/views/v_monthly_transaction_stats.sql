@@ -10,11 +10,12 @@ WITH BaseDaily AS (
     SELECT 
         SUBSTRING(t.tx_dt_str, 1, 7) AS year_month,   -- ← 關鍵：年月分組
         t.PR_ID,
+        t.pr_bzkind,
         t.tx_dt_str,
         SUM(t.tx_cnt) AS daily_cnt,
         SUM(t.avg_tm_ms * t.tx_cnt) / NULLIF(SUM(t.tx_cnt), 0) AS daily_avg_ms
     FROM v_rt_pr_hh24_clean t
-    GROUP BY year_month, t.PR_ID, t.tx_dt_str
+    GROUP BY year_month, t.PR_ID, t.pr_bzkind, t.tx_dt_str
 ),
 
 MonthlyTotal AS (
@@ -26,11 +27,21 @@ MonthlyTotal AS (
     GROUP BY year_month
 ),
 
+MonthlyBzTotal AS (
+    SELECT 
+        year_month,
+        pr_bzkind,
+        SUM(daily_cnt) AS bz_total_cnt
+    FROM BaseDaily
+    GROUP BY year_month, pr_bzkind
+),
+
 SystemStats AS (
     -- 每月各 PR 統計
     SELECT 
         b.year_month,
         b.PR_ID,
+        b.pr_bzkind,
         i.PR_CATEGORY,
         SUM(b.daily_cnt) AS sys_total_cnt,
         SUM(b.daily_avg_ms * b.daily_cnt) / NULLIF(SUM(b.daily_cnt), 0) AS sys_avg_ms,
@@ -38,8 +49,8 @@ SystemStats AS (
         MAX(b.tx_dt_str) AS last_tx_date,
         COUNT(b.tx_dt_str) AS tx_days_cnt
     FROM BaseDaily b
-    JOIN v_pr_info i ON b.PR_ID = i.PR_ID
-    GROUP BY b.year_month, b.PR_ID, i.PR_CATEGORY
+    JOIN v_cfg_pr_bzkind i ON b.PR_ID = i.PR_ID
+    GROUP BY b.year_month, b.PR_ID, b.pr_bzkind, i.PR_CATEGORY
 ),
 
 PeakDayStats AS (
@@ -82,6 +93,7 @@ PeakHourStats AS (
 SELECT 
     s.year_month AS "年月",                     -- ← 新增：可作為查詢條件
     s.PR_ID AS "交易類型",
+    s.pr_bzkind AS pr_bzkind,
     s.PR_CATEGORY AS "類別",
     COALESCE(i.PR_NAME, '未定義名稱') AS "名稱", 
     s.sys_total_cnt AS "交易總量",
@@ -114,6 +126,8 @@ SELECT
     -- 佔比
     CONCAT(CAST(ROUND((s.sys_total_cnt * 100.0) / t.all_sys_total_cnt, 2) AS VARCHAR), '%') AS "交易量佔比",
 
+    CONCAT(CAST(ROUND((s.sys_total_cnt * 100.0) / NULLIF(bt.bz_total_cnt, 0), 2) AS VARCHAR), '%') AS "分類內佔比",
+
     -- 交易期間
     CAST(CAST(SUBSTRING(s.first_tx_date, 1, 4) AS INT) - 1911 AS VARCHAR) || '/' ||
     SUBSTRING(s.first_tx_date, 6, 2) || '/' || 
@@ -128,6 +142,7 @@ SELECT
 FROM SystemStats s
 JOIN PeakDayStats p ON s.year_month = p.year_month AND s.PR_ID = p.PR_ID AND p.rn = 1
 JOIN PeakHourStats ph ON s.year_month = ph.year_month AND s.PR_ID = ph.PR_ID
-JOIN v_pr_info i ON s.PR_ID = i.PR_ID
+JOIN v_cfg_pr_bzkind i ON s.PR_ID = i.PR_ID
 JOIN MonthlyTotal t ON s.year_month = t.year_month
+JOIN MonthlyBzTotal bt ON s.year_month = bt.year_month AND s.pr_bzkind = bt.pr_bzkind
 ORDER BY s.year_month, s.PR_CATEGORY DESC, s.sys_total_cnt DESC;

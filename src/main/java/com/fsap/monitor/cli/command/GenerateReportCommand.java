@@ -42,6 +42,9 @@ public class GenerateReportCommand implements Runnable {
     @Option(names = "--history-end-month", description = "Historical range end month in YYYY-MM format")
     String historyEndMonth;
 
+    @Option(names = "--target-bzkinds", description = "Business kinds (PR_BZKIND) to produce besides ALL, comma separated, e.g. NCL,NIS; empty value means ALL only; default from fsap.report.target-bzkinds")
+    String targetBzkinds;
+
     private final ReportGenerationService reportGenerationService;
 
     public GenerateReportCommand(ReportGenerationService reportGenerationService) {
@@ -59,7 +62,8 @@ public class GenerateReportCommand implements Runnable {
                 rangeStartTime,
                 rangeEndTime,
                 historyStartMonth,
-                historyEndMonth
+                historyEndMonth,
+                ReportGenerationRequest.parseBzkinds(targetBzkinds)
         ));
         System.out.printf(
                 "Report generation completed: timestamp=%s success=%d failure=%d%n",
@@ -68,6 +72,13 @@ public class GenerateReportCommand implements Runnable {
                 result.failures().size()
         );
         System.out.println("Workbook: " + result.workbookPath());
+        result.passResults().stream()
+                .filter(pass -> !"ALL".equals(pass.targetBzkind()))
+                .forEach(pass -> System.out.println("Workbook (" + pass.targetBzkind() + "): " + pass.workbookPath()));
+        if (result.comparisonWorkbookPath() != null) {
+            System.out.println("Comparison workbook: " + result.comparisonWorkbookPath());
+        }
+        result.notices().forEach(notice -> System.out.println("Notice: " + notice));
         System.out.println("Parameters: " + result.parametersFile());
     }
 }

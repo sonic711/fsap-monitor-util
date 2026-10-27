@@ -62,8 +62,8 @@ SELECT
     ROUND(MAX(CASE WHEN site_type = '主地' THEN dly_max_cpu END), 2) AS "主地_CPU_max",
     ROUND(MAX(CASE WHEN site_type = '主地' THEN dly_max_mem END), 2) AS "主地_Memory_max",
 
-    ROUND(MAX(CASE WHEN site_type = '異地' THEN dly_max_cpu END), 2) AS "異地_CPU_min",
-    ROUND(MAX(CASE WHEN site_type = '異地' THEN dly_min_mem END), 2) AS "異地_Memory_min"
+    ROUND(MAX(CASE WHEN site_type = '異地' THEN dly_max_cpu END), 2) AS "異地_CPU_max",
+    ROUND(MAX(CASE WHEN site_type = '異地' THEN dly_max_mem END), 2) AS "異地_Memory_max"
 
 FROM DailyAvg
 GROUP BY log_date

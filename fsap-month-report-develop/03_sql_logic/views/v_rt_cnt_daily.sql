@@ -29,9 +29,11 @@ SELECT
   ROUND(
     SUM(ok_cnt) * 100.0 / NULLIF(SUM(total_cnt), 0),
     2
-  ) AS 成功率百分比
+  ) AS 成功率百分比,
+
+  pr_bzkind
 FROM v_rt_cnt_clean
 WHERE (1 = 1)
 --AND PR_ID IN ('FAC2FAS', 'G61')
-GROUP BY 1, 2, 3, 4, 5, 6
+GROUP BY 1, 2, 3, 4, 5, 6, pr_bzkind
 ORDER BY 1, 2, 3, 4, 5, 7 DESC;

@@ -1,6 +1,7 @@
 WITH params AS (
     --  [參數控制台] 修改此處即可產出不同月份的報表
     SELECT 
+        '${targetBzkind}' AS target_bzkind,   -- 業務分類（ALL＝不篩選）
         '${targetMonth}' AS target_month,   -- 指定統計年月
         'FAC2FAS' AS exclude_pr_id    -- 指定要排除的交易代碼
 ),
@@ -12,6 +13,7 @@ DailySummary AS (
     CROSS JOIN params p  --  關聯參數
     WHERE tx_yyyymm = p.target_month 
       AND PR_ID != p.exclude_pr_id
+      AND (p.target_bzkind = 'ALL' OR pr_bzkind = p.target_bzkind)
     GROUP BY 1
     ORDER BY 1
 )

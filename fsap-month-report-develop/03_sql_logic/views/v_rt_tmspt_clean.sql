@@ -38,13 +38,13 @@ logic AS (
   FROM mk
 )
 SELECT
-  PR_ID,
+  logic.PR_ID,
 
   -- PR_ID normalize
   CASE
-    WHEN regexp_matches(PR_ID, '^[A-Z]\\d+$') THEN
-      regexp_replace(PR_ID, '^([A-Z])(\\d+)$', '\\1' || lpad('\\2', 4, '0'))
-    ELSE PR_ID
+    WHEN regexp_matches(logic.PR_ID, '^[A-Z]\\d+$') THEN
+      regexp_replace(logic.PR_ID, '^([A-Z])(\\d+)$', '\\1' || lpad('\\2', 4, '0'))
+    ELSE logic.PR_ID
   END AS pr_id_norm,
 
   CALDY,
@@ -62,10 +62,13 @@ SELECT
   EXTRACT(day   FROM tx_dt)::INT AS tx_day,
   strftime(tx_dt, '%Y-%m') AS tx_yyyymm,
 
+  COALESCE(bz.PR_BZKIND, '其他/待分類') AS pr_bzkind,
   _file, _sheet, _dt, _ingest_ts
 FROM logic
+LEFT JOIN v_cfg_pr_bzkind bz
+  ON trim(logic.PR_ID) = bz.PR_ID
 -- [新增] 使用 QUALIFY 進行去重
 QUALIFY ROW_NUMBER() OVER (
-    PARTITION BY tx_dt, PR_ID
+    PARTITION BY tx_dt, logic.PR_ID
     ORDER BY file_dt DESC, _dt DESC, _file DESC
 ) = 1;

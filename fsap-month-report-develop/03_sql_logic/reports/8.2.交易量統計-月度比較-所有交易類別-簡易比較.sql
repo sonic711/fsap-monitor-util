@@ -2,6 +2,7 @@
 WITH params AS (
     --  控制台：調整兩個月份日期即可
     SELECT
+        '${targetBzkind}' AS target_bzkind,   -- 業務分類（ALL＝不篩選）
         '${previousRangeStartTime}' AS StartTime_Mar,
         '${previousRangeEndTime}' AS EndTime_Mar,
         '${rangeStartTime}' AS StartTime_Apr,
@@ -25,6 +26,7 @@ BaseDaily_Mar AS (
     WHERE t.tx_dt_str BETWEEN SUBSTRING(p.StartTime_Mar, 1, 10) AND SUBSTRING(p.EndTime_Mar, 1, 10)
       AND t.tx_dt_str || ' ' || LPAD(CAST(t.tx_hour AS VARCHAR), 2, '0') || ':00' BETWEEN p.StartTime_Mar AND p.EndTime_Mar
       AND t.PR_ID NOT IN (SELECT PR_ID FROM Exclude_PR_ID)
+      AND (p.target_bzkind = 'ALL' OR t.pr_bzkind = p.target_bzkind)
     GROUP BY t.PR_ID
 ),
 
@@ -39,7 +41,7 @@ SystemStats_Mar AS (
         i.PR_CATEGORY,
         SUM(b.daily_cnt) AS sys_total_cnt_Mar
     FROM BaseDaily_Mar b
-    JOIN v_pr_info i ON b.PR_ID = i.PR_ID
+    JOIN v_cfg_pr_bzkind i ON b.PR_ID = i.PR_ID
     CROSS JOIN params p
     WHERE (i.PR_CATEGORY = p.TargetCategory OR p.TargetCategory = '')
     GROUP BY b.PR_ID, i.PR_CATEGORY
@@ -55,6 +57,7 @@ BaseDaily_Apr AS (
     WHERE t.tx_dt_str BETWEEN SUBSTRING(p.StartTime_Apr, 1, 10) AND SUBSTRING(p.EndTime_Apr, 1, 10)
       AND t.tx_dt_str || ' ' || LPAD(CAST(t.tx_hour AS VARCHAR), 2, '0') || ':00' BETWEEN p.StartTime_Apr AND p.EndTime_Apr
       AND t.PR_ID NOT IN (SELECT PR_ID FROM Exclude_PR_ID)
+      AND (p.target_bzkind = 'ALL' OR t.pr_bzkind = p.target_bzkind)
     GROUP BY t.PR_ID
 ),
 
@@ -68,7 +71,7 @@ SystemStats_Apr AS (
         b.PR_ID,
         SUM(b.daily_cnt) AS sys_total_cnt_Apr
     FROM BaseDaily_Apr b
-    JOIN v_pr_info i ON b.PR_ID = i.PR_ID
+    JOIN v_cfg_pr_bzkind i ON b.PR_ID = i.PR_ID
     CROSS JOIN params p
     WHERE (i.PR_CATEGORY = p.TargetCategory OR p.TargetCategory = '')
     GROUP BY b.PR_ID
@@ -104,7 +107,7 @@ SELECT
 
 FROM SystemStats_Mar m
 JOIN SystemStats_Apr a ON m.PR_ID = a.PR_ID
-JOIN v_pr_info i ON m.PR_ID = i.PR_ID
+JOIN v_cfg_pr_bzkind i ON m.PR_ID = i.PR_ID
 CROSS JOIN MonthlyTotal_Mar tm
 CROSS JOIN MonthlyTotal_Apr ta
 ORDER BY a.sys_total_cnt_Apr DESC;

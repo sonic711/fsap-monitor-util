@@ -4,6 +4,7 @@ WITH base AS (
     年,
     年月,
     交易類型,
+    pr_bzkind,
     CAST(交易日期 AS DATE) AS tx_date,
     交易總筆數,
     成功筆數,
@@ -26,6 +27,7 @@ m AS (
     MAX(tx_date) AS 資料結束日,
     
     交易類型,
+    pr_bzkind,
     COUNT(DISTINCT tx_date) AS 有資料日數,
 
     -- 月交易量
@@ -47,6 +49,6 @@ m AS (
       2
     ) AS 月成功率百分比
   FROM base
-  GROUP BY 年, 年月, 交易類型
+  GROUP BY 年, 年月, 交易類型, pr_bzkind
 )
 SELECT * FROM m;

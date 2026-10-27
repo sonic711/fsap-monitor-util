@@ -41,7 +41,7 @@ final AS (
   FROM mk
 )
 SELECT
-  PR_ID,
+  final.PR_ID,
   NODE_ID,
   CALTM,
 
@@ -75,6 +75,10 @@ SELECT
     ELSE (substr(CALTM, 1, 4) = strftime(tx_dt, '%m%d'))
   END AS caltm_match_txdt,
 
+  COALESCE(bz.PR_BZKIND, '其他/待分類') AS pr_bzkind,
+
   -- meta
   _file, _sheet, _dt, _ingest_ts
-FROM final;
+FROM final
+LEFT JOIN v_cfg_pr_bzkind bz
+  ON final.PR_ID = bz.PR_ID;

@@ -19,7 +19,9 @@ import java.time.format.DateTimeFormatter;
 import java.util.ArrayList;
 import java.util.Comparator;
 import java.util.HashSet;
+import java.util.LinkedHashMap;
 import java.util.List;
+import java.util.Map;
 import java.util.Set;
 import java.util.regex.Matcher;
 import java.util.regex.Pattern;
@@ -42,6 +44,7 @@ import org.springframework.stereotype.Service;
 import com.fasterxml.jackson.databind.ObjectMapper;
 import com.fsap.monitor.core.service.ProjectPathService;
 import com.fsap.monitor.core.viewsync.ViewSyncService;
+import com.fsap.monitor.infra.config.FsapProperties;
 import com.fsap.monitor.infra.duckdb.DuckDbConnectionFactory;
 import com.fsap.monitor.sftp.utils.StringUtils;
 
@@ -60,6 +63,7 @@ public class ReportGenerationService {
     private static final String REPORT_PARAMS_FILE = "report-params.json";
     private static final String NO_DATA_MESSAGE_HEADER = "Message";
     private static final String WORKBOOK_PREFIX = "維運月度報表_";
+    private static final String COMPARISON_DIRECTORY = "REPORT";
     private static final DateTimeFormatter REPORT_MONTH_FORMAT = DateTimeFormatter.ofPattern("MM'月'");
     private static final Pattern REPORT_ORDER_PREFIX = Pattern.compile("^(\\d+(?:\\.\\d+)*)\\.?\\s*");
     private static final Pattern REPORT_PARAMETER_PATTERN = Pattern.compile("\\$\\{([a-zA-Z][a-zA-Z0-9]*)}");
@@ -71,23 +75,27 @@ public class ReportGenerationService {
     private final ViewSyncService viewSyncService;
     private final ReportParameterDefaultsService reportParameterDefaultsService;
     private final ObjectMapper objectMapper;
+    private final FsapProperties properties;
 
     public ReportGenerationService(
             ProjectPathService projectPathService,
             DuckDbConnectionFactory connectionFactory,
             ViewSyncService viewSyncService,
             ReportParameterDefaultsService reportParameterDefaultsService,
-            ObjectMapper objectMapper
+            ObjectMapper objectMapper,
+            FsapProperties properties
     ) {
         this.projectPathService = projectPathService;
         this.connectionFactory = connectionFactory;
         this.viewSyncService = viewSyncService;
         this.reportParameterDefaultsService = reportParameterDefaultsService;
         this.objectMapper = objectMapper;
+        this.properties = properties;
     }
 
     /**
-     * 依據輸入參數產生一批完整報表。
+     * 依據輸入參數產生一批完整報表。先產出 ALL，再依設定逐一產出各業務分類，
+     * 最後依設定把各輪結果合成一份跨分類比較活頁簿。
      */
     public ReportGenerationResult generate(ReportGenerationRequest request) {
         ReportGenerationRequest effectiveRequest = reportParameterDefaultsService.resolve(request);
@@ -96,7 +104,7 @@ public class ReportGenerationService {
                 : LocalDateTime.now().format(TIMESTAMP_FORMAT);
 
         Path runDirectory = projectPathService.reportOutputDir().resolve(timestamp);
-        Path workbookPath = runDirectory.resolve(workbookFileName(effectiveRequest, timestamp));
+        Path workbookPath = runDirectory.resolve(workbookFileName(effectiveRequest, timestamp, BzkindSelection.ALL));
         Path parametersFile = runDirectory.resolve(REPORT_PARAMS_FILE);
 
         try {
@@ -115,49 +123,49 @@ public class ReportGenerationService {
         List<Path> reportFiles = scanReportFiles();
         List<String> failures = new ArrayList<>();
         List<ReportFileResult> reportResults = new ArrayList<>();
+        List<PassSummary> passSummaries = new ArrayList<>();
+        List<String> notices = new ArrayList<>();
+        Map<String, Map<String, QueryTable>> tablesByPass = new LinkedHashMap<>();
+        Path comparisonWorkbookPath = null;
         Throwable fatalFailure = null;
 
         writeParametersFile(parametersFile, effectiveRequest);
 
-        try (Connection connection = connectionFactory.openConnection();
-             XSSFWorkbook workbook = new XSSFWorkbook()) {
+        try (Connection connection = connectionFactory.openConnection()) {
             logExecution("[資料庫] 已連接實體庫: " + projectPathService.databaseFile().getFileName());
-            // POI 的 CellStyle 只能屬於單一 workbook。每次重新建立可以避免
-            // 第二次產報時誤用上一份 workbook style 的錯誤。
-            WorkbookStyles workbookStyles = createWorkbookStyles(workbook);
 
             loadMacros(connection);
             syncViews(connection);
 
-            Set<String> usedSheetNames = new HashSet<>();
-            for (Path reportFile : reportFiles) {
-                String baseName = stripSqlExtension(reportFile.getFileName().toString());
-                String sheetName = nextSheetName(baseName, usedSheetNames);
-                logExecution("[處理中] " + reportFile.getFileName());
+            List<String> categoryProblems = PrCfgCategoryCheck.findProblems(connection);
+            if (!categoryProblems.isEmpty()) {
+                categoryProblems.forEach(this::logExecution);
+                // 中止前清掉剛建立的空批次目錄，避免 upload-report 把空目錄當成最新批次
+                Files.deleteIfExists(parametersFile);
+                Files.deleteIfExists(runDirectory);
+                throw new IllegalStateException(categoryProblems.get(0));
+            }
+            PrCfgSummary.describe(connection, effectiveRequest.targetMonth()).forEach(this::logExecution);
 
-                try {
-                    QueryTable table = executeReportQuery(connection, reportFile, effectiveRequest);
-                    writeWorkbookSheet(workbook, workbookStyles, sheetName, table);
-                    writeCsv(runDirectory.resolve(baseName + ".csv"), table);
-                    reportResults.add(new ReportFileResult(baseName, table.rows().size(), true, null));
-                    logExecution("完成 (" + table.rows().size() + " 筆)");
-                } catch (Exception exception) {
-                    String errorMessage = reportFile.getFileName() + ": " + exception.getMessage();
-                    failures.add(errorMessage);
-                    reportResults.add(new ReportFileResult(baseName, 0, false, exception.getMessage()));
-                    // 把失敗資訊直接寫進 workbook，這樣操作人員即使不看 server log，
-                    // 也能從報表成品本身知道哪一頁出了什麼問題。
-                    writeErrorSheet(workbook, workbookStyles, nextSheetName("ERR_" + baseName, usedSheetNames), exception.getMessage());
-                    logExecution("失敗: " + exception.getMessage());
-                    if (!effectiveRequest.continueOnError()) {
-                        fatalFailure = exception;
-                        break;
-                    }
+            List<String> bzkinds = resolveBzkinds(connection, effectiveRequest, notices);
+            List<String> passes = new ArrayList<>();
+            passes.add(BzkindSelection.ALL);
+            passes.addAll(bzkinds);
+
+            for (String pass : passes) {
+                PassRun run = runPass(connection, effectiveRequest, pass, runDirectory, timestamp, reportFiles);
+                passSummaries.add(new PassSummary(pass, run.directory(), run.workbookPath()));
+                reportResults.addAll(run.reportResults());
+                failures.addAll(run.failures());
+                tablesByPass.put(pass, run.tables());
+                if (run.fatalFailure() != null) {
+                    fatalFailure = run.fatalFailure();
+                    break;
                 }
             }
 
-            try (OutputStream outputStream = Files.newOutputStream(workbookPath)) {
-                workbook.write(outputStream);
+            if (fatalFailure == null && !bzkinds.isEmpty()) {
+                comparisonWorkbookPath = writeComparisonWorkbook(runDirectory, timestamp, tablesByPass, bzkinds, notices);
             }
         } catch (RuntimeException exception) {
             throw exception;
@@ -165,7 +173,6 @@ public class ReportGenerationService {
             throw new IllegalStateException("Report generation failed", exception);
         }
 
-        logExecution("彙總報表: " + workbookPath.getFileName());
         logExecution("產出完成: success=" + successCount(reportResults) + " failure=" + failures.size());
 
         if (fatalFailure != null) {
@@ -175,13 +182,151 @@ public class ReportGenerationService {
             throw new IllegalStateException("Report generation completed with failures");
         }
 
-        return new ReportGenerationResult(timestamp, runDirectory, workbookPath, parametersFile, effectiveRequest, reportResults, failures);
+        return new ReportGenerationResult(timestamp, runDirectory, workbookPath, parametersFile, effectiveRequest, reportResults, failures,
+                passSummaries, comparisonWorkbookPath, notices);
     }
 
-    private String workbookFileName(ReportGenerationRequest request, String timestamp) {
+    /**
+     * 以指定的業務分類（ALL 表示不篩選）執行全部報表 SQL，寫出該輪的 CSV 與彙總 workbook。
+     * ALL 放在批次目錄第一層，各分類放在以分類代碼命名的子目錄。
+     */
+    private PassRun runPass(
+            Connection connection,
+            ReportGenerationRequest request,
+            String bzkind,
+            Path runDirectory,
+            String timestamp,
+            List<Path> reportFiles
+    ) throws Exception {
+        boolean allPass = BzkindSelection.ALL.equals(bzkind);
+        Path passDirectory = allPass ? runDirectory : runDirectory.resolve(bzkind);
+        Path workbookPath = passDirectory.resolve(workbookFileName(request, timestamp, bzkind));
+        String label = allPass ? "" : bzkind + "/";
+        Files.createDirectories(passDirectory);
+
+        logExecution("--- 業務分類: " + bzkind + " ---");
+        List<String> failures = new ArrayList<>();
+        List<ReportFileResult> reportResults = new ArrayList<>();
+        Map<String, QueryTable> tables = new LinkedHashMap<>();
+        Throwable fatalFailure = null;
+
+        try (XSSFWorkbook workbook = new XSSFWorkbook()) {
+            // POI 的 CellStyle 只能屬於單一 workbook。每次重新建立可以避免
+            // 第二次產報時誤用上一份 workbook style 的錯誤。
+            WorkbookStyles workbookStyles = createWorkbookStyles(workbook);
+
+            Set<String> usedSheetNames = new HashSet<>();
+            for (Path reportFile : reportFiles) {
+                String baseName = stripSqlExtension(reportFile.getFileName().toString());
+                String sheetName = nextSheetName(baseName, usedSheetNames);
+                logExecution("[處理中] " + label + reportFile.getFileName());
+
+                try {
+                    QueryTable table = executeReportQuery(connection, reportFile, request, bzkind);
+                    writeWorkbookSheet(workbook, workbookStyles, sheetName, table);
+                    writeCsv(passDirectory.resolve(baseName + ".csv"), table);
+                    tables.put(baseName, table);
+                    reportResults.add(new ReportFileResult(label + baseName, table.rows().size(), true, null));
+                    logExecution("完成 (" + table.rows().size() + " 筆)");
+                } catch (Exception exception) {
+                    String errorMessage = (allPass ? "" : "[" + bzkind + "] ") + reportFile.getFileName() + ": " + exception.getMessage();
+                    failures.add(errorMessage);
+                    reportResults.add(new ReportFileResult(label + baseName, 0, false, exception.getMessage()));
+                    // 把失敗資訊直接寫進 workbook，這樣操作人員即使不看 server log，
+                    // 也能從報表成品本身知道哪一頁出了什麼問題。
+                    writeErrorSheet(workbook, workbookStyles, nextSheetName("ERR_" + baseName, usedSheetNames), exception.getMessage());
+                    logExecution("失敗: " + exception.getMessage());
+                    if (!request.continueOnError()) {
+                        fatalFailure = exception;
+                        break;
+                    }
+                }
+            }
+
+            try (OutputStream outputStream = Files.newOutputStream(workbookPath)) {
+                workbook.write(outputStream);
+            }
+        }
+
+        logExecution("彙總報表: " + label + workbookPath.getFileName());
+        return new PassRun(passDirectory, workbookPath, reportResults, failures, tables, fatalFailure);
+    }
+
+    /**
+     * 依最新 PR_CFG 快照驗證要額外產出的分類；不存在的分類跳過並記錄原因。
+     */
+    private List<String> resolveBzkinds(Connection connection, ReportGenerationRequest request, List<String> notices) {
+        List<String> requested = request.targetBzkinds();
+        if (requested == null || requested.isEmpty()) {
+            return List.of();
+        }
+
+        List<String> valid = new ArrayList<>();
+        try (Statement statement = connection.createStatement()) {
+            try (ResultSet resultSet = statement.executeQuery("SELECT MAX(snapshot_dt), COUNT(*) FROM v_cfg_pr_bzkind")) {
+                if (resultSet.next()) {
+                    logExecution("[分類對照] PR_CFG 最新快照 " + resultSet.getString(1) + "（" + resultSet.getLong(2) + " 筆）");
+                }
+            }
+            try (ResultSet resultSet = statement.executeQuery(
+                    "SELECT DISTINCT PR_BZKIND FROM v_cfg_pr_bzkind WHERE PR_BZKIND IS NOT NULL ORDER BY 1")) {
+                while (resultSet.next()) {
+                    valid.add(resultSet.getString(1));
+                }
+            }
+        } catch (SQLException exception) {
+            throw new IllegalStateException("Unable to read business kinds from v_cfg_pr_bzkind", exception);
+        }
+
+        List<String> messages = new ArrayList<>();
+        List<String> selected = BzkindSelection.select(requested, valid, messages);
+        messages.forEach(this::logExecution);
+        notices.addAll(messages);
+        logExecution("[分類] 本次產出: ALL" + selected.stream().map(value -> "、" + value).collect(Collectors.joining()));
+        return selected;
+    }
+
+    private Path writeComparisonWorkbook(
+            Path runDirectory,
+            String timestamp,
+            Map<String, Map<String, QueryTable>> tablesByPass,
+            List<String> bzkinds,
+            List<String> notices
+    ) throws Exception {
+        FsapProperties.CombinedWorkbook config = properties.getReport().getCombinedWorkbook();
+        if (config.getAllSheets().isEmpty() && config.getReports().isEmpty()) {
+            return null;
+        }
+
+        ComparisonWorkbookPlanner.Plan plan = ComparisonWorkbookPlanner.plan(config, tablesByPass, bzkinds);
+        plan.messages().forEach(this::logExecution);
+        notices.addAll(plan.messages());
+        if (plan.sheets().isEmpty()) {
+            logExecution("[比較活頁簿] 沒有可組合的分頁，未產出");
+            return null;
+        }
+
+        Path directory = runDirectory.resolve(COMPARISON_DIRECTORY);
+        Files.createDirectories(directory);
+        Path workbookPath = directory.resolve(config.getFilename() + "_" + timestamp + ".xlsx");
+        try (XSSFWorkbook workbook = new XSSFWorkbook()) {
+            WorkbookStyles workbookStyles = createWorkbookStyles(workbook);
+            for (ComparisonWorkbookPlanner.SheetPlan sheet : plan.sheets()) {
+                writeWorkbookSheet(workbook, workbookStyles, sheet.sheetName(), sheet.table());
+            }
+            try (OutputStream outputStream = Files.newOutputStream(workbookPath)) {
+                workbook.write(outputStream);
+            }
+        }
+        logExecution("[比較活頁簿] " + COMPARISON_DIRECTORY + "/" + workbookPath.getFileName() + "（" + plan.sheets().size() + " 個分頁）");
+        return workbookPath;
+    }
+
+    private String workbookFileName(ReportGenerationRequest request, String timestamp, String bzkind) {
         YearMonth targetMonth = YearMonth.parse(request.targetMonth());
         String reportMonthName = targetMonth.format(REPORT_MONTH_FORMAT);
-        return WORKBOOK_PREFIX + reportMonthName + "彙總_" + timestamp + ".xlsx";
+        String bzkindPart = BzkindSelection.ALL.equals(bzkind) ? "" : bzkind + "_";
+        return WORKBOOK_PREFIX + reportMonthName + "彙總_" + bzkindPart + timestamp + ".xlsx";
     }
 
     private List<Path> scanReportFiles() {
@@ -273,10 +418,10 @@ public class ReportGenerationService {
         }
     }
 
-    private QueryTable executeReportQuery(Connection connection, Path reportFile, ReportGenerationRequest request) throws Exception {
+    private QueryTable executeReportQuery(Connection connection, Path reportFile, ReportGenerationRequest request, String bzkind) throws Exception {
         String sql = Files.readString(reportFile); // Code Scan Fix
         String reverse = StringUtils.reverse(sql);
-        sql = renderReportParameters(StringUtils.reverse(reverse), request); // Code Scan Fix
+        sql = renderReportParameters(StringUtils.reverse(reverse), request, bzkind); // Code Scan Fix
         sql = projectPathService.rewriteProjectRelativePaths(sql);
         try (Statement statement = connection.createStatement()) {
             try {
@@ -300,12 +445,13 @@ public class ReportGenerationService {
         }
     }
 
-    private String renderReportParameters(String sql, ReportGenerationRequest request) {
+    private String renderReportParameters(String sql, ReportGenerationRequest request, String bzkind) {
+        Map<String, String> parameters = request.templateParameters(bzkind);
         Matcher matcher = REPORT_PARAMETER_PATTERN.matcher(sql);
         StringBuilder buffer = new StringBuilder();
         while (matcher.find()) {
             String parameterName = matcher.group(1);
-            String value = request.templateParameters().get(parameterName);
+            String value = parameters.get(parameterName);
             if (value == null) {
                 throw new IllegalStateException("Unknown or unresolved report parameter: " + parameterName);
             }
@@ -432,7 +578,7 @@ public class ReportGenerationService {
         }
     }
 
-    private String nextSheetName(String candidate, Set<String> usedSheetNames) {
+    static String nextSheetName(String candidate, Set<String> usedSheetNames) {
         String safe = WorkbookUtil.createSafeSheetName(candidate);
         safe = safe.length() > 31 ? safe.substring(0, 31) : safe;
         String resolved = safe;
@@ -504,7 +650,19 @@ public class ReportGenerationService {
         }
     }
 
-    private record QueryTable(List<String> headers, List<List<Object>> rows) { }
+    record QueryTable(List<String> headers, List<List<Object>> rows) { }
+
+    /**
+     * 單一業務分類（ALL 或分類代碼）在一輪中的執行結果。
+     */
+    private record PassRun(
+            Path directory,
+            Path workbookPath,
+            List<ReportFileResult> reportResults,
+            List<String> failures,
+            Map<String, QueryTable> tables,
+            Throwable fatalFailure
+    ) { }
 
     /**
      * 僅限單一 workbook 批次內重用的樣式集合。
@@ -518,8 +676,16 @@ public class ReportGenerationService {
             Path parametersFile,
             ReportGenerationRequest effectiveRequest,
             List<ReportFileResult> reportResults,
-            List<String> failures
+            List<String> failures,
+            List<PassSummary> passResults,
+            Path comparisonWorkbookPath,
+            List<String> notices
     ) { }
+
+    /**
+     * 每一輪（ALL 或分類）的輸出位置。
+     */
+    public record PassSummary(String targetBzkind, Path directory, Path workbookPath) { }
 
     /**
      * 單一報表 SQL 在一個批次中的執行結果。

@@ -5,8 +5,8 @@
 ## 1. 業務元數據視圖 (Metadata)
 | 視圖名稱 | 功能說明 | 數據來源 |
 | :--- | :--- | :--- |
-| `v_pr_info` | 交易代碼定義與名稱映射。 | `PR_INFO.csv` |
 | `v_cfg_pr_info` | 交易詳細配置參數。 | `CFG_PR_INFO.csv` |
+| `v_cfg_pr_bzkind` | 程式代號（`PR_ID`）對應名稱（`PR_NAME`）、業務分類（`PR_BZKIND`）與交易類別（`PR_CATEGORY`：`update`／`query`，由 `PR_TPKIND` 決定，2＝查詢、1＝交易）。報表 7、8 系列以 `JOIN v_cfg_pr_bzkind` 取類別與名稱。 | 數據湖 `PR_CFG/PR_CFG-*.jsonl.gz`，只取 `_dt` 最新的一整份快照；舊快照沒有 `PR_TPKIND` 時該欄為 `NULL`，`generate-report` 前置檢查會要求最新快照每筆都有 1 或 2，否則中止。 |
 | `v_prod_eureka_registry_info` | 微服務節點註冊清單。 | `prod_eureka_registry_info.jsonl` |
 
 ## 2. 監控與日誌視圖 (Monitoring)
@@ -29,12 +29,21 @@
 | `v_rt_cnt_monthly` / `v_rt_cnt_monthly_no_fac2fas` / `v_rt_cnt_weekly` | 月 / 週級交易聚合。 | 供查詢與後續擴充使用。 |
 | `v_monthly_transaction_stats` | 每月各交易類型統計。 | 第 8 頁整月統計的 view 化版本，提供交易總量、加權平均處理時間、處理時間峰日、峰時、佔比與實際交易天數，供 MOM 報表重用。 |
 
+業務分類欄位 `pr_bzkind`：
+
+- 適用 view：`v_rt_pr_hh24_clean`、`v_rt_cnt_clean`、`v_rt_node_hh24_clean`、`v_rt_tmspt_clean`、`v_rt_cnt_daily`、`v_rt_cnt_weekly`、`v_rt_cnt_monthly`、`v_monthly_transaction_stats`。
+- 以 `LEFT JOIN v_cfg_pr_bzkind` 取得分類；不在 `PR_CFG` 或分類為空者歸「其他/待分類」。`LEFT JOIN` 不丟列，所以報表以 `ALL`（不篩選）執行時仍包含未分類程式。
+- `PR_CFG` 每天是完整快照，數據湖保留每一天，`v_cfg_pr_bzkind` 只取 `_dt` 最新的一份；同一 `PR_ID` 只會對應一個分類。
+- `v_rt_tmspt_clean` 以原始 `PR_ID` 對應分類，不使用正規化後的 `pr_id_norm`（`G61` 正規化為 `G0061` 後會與 `PR_CFG` 的代號對不上）。
+- `v_rt_cnt_daily`、`v_rt_cnt_weekly`、`v_rt_cnt_monthly` 的 `pr_bzkind` 同時是分組維度，聚合結果按分類分列。
+
 `v_monthly_transaction_stats` 的重要口徑：
 
 - 峰日：每個 `PR_ID` 在該月中每日平均處理時間最高的日期。
 - 峰值處理時間：峰日當天的日平均處理時間。
 - 峰時：該月內小時交易量最高的時段；若同量，取較早日期、較早小時。
 - 月總量與佔比：以 `v_rt_pr_hh24_clean.tx_cnt` 彙總。
+- 分類內佔比：分母為該分類當月總量（口徑同月總量，只改成同一分類內加總）；「交易量佔比」的分母仍是整個系統。
 
 ## 4. 數據清理策略說明
 依資料來源不同，部分清洗 view 會採用以下處理：

@@ -1,5 +1,6 @@
 WITH params AS (
     SELECT
+        '${targetBzkind}' AS target_bzkind,   -- 業務分類（ALL＝不篩選）
         '${historyStartMonth}' AS StartYM,    --  往前推一個月作為基底
         '${historyEndMonth}' AS EndYM,
         'FAC2FAS' AS ExcludePrId -- 排除清單
@@ -18,6 +19,7 @@ FSAP_Daily AS (
     CROSS JOIN params p
     WHERE t.tx_yyyymm BETWEEN p.StartYM AND p.EndYM
       AND t.PR_ID NOT IN (SELECT PR_ID FROM Exclude_PR_ID)
+      AND (p.target_bzkind = 'ALL' OR t.pr_bzkind = p.target_bzkind)
     GROUP BY t.tx_yyyymm, t.tx_dt_str
 ),
 FSAP_MonthlyPeakDay AS (
@@ -38,7 +40,9 @@ FSAP_PeakDayHourly AS (
     FROM v_rt_pr_hh24_clean h
     -- JOIN 步驟 2 的結果，確保我們只撈峰日那天的每小時資料
     JOIN FSAP_MonthlyPeakDay p ON h.tx_dt_str = p."交易日" AND p.rn = 1
+    CROSS JOIN params bz
     WHERE h.PR_ID NOT IN (SELECT PR_ID FROM Exclude_PR_ID)
+    AND (bz.target_bzkind = 'ALL' OR h.pr_bzkind = bz.target_bzkind)
     GROUP BY h.tx_dt_str, h.tx_hour
 ),
 FSAP_PeakHourRank AS (

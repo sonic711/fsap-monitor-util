@@ -11,6 +11,7 @@ public class FsapProperties {
     private final Paths paths = new Paths();
     private final Ingest ingest = new Ingest();
     private final Views views = new Views();
+    private final Report report = new Report();
     private final Web web = new Web();
     private final Monitor monitor = new Monitor();
 
@@ -24,6 +25,10 @@ public class FsapProperties {
 
     public Views getViews() {
         return views;
+    }
+
+    public Report getReport() {
+        return report;
     }
 
     public Web getWeb() {
@@ -108,7 +113,8 @@ public class FsapProperties {
                 "RT_NODE_HH24",
                 "BT_CNT",
                 "MON_LOG",
-                "ERR_LOG"
+                "ERR_LOG",
+                "PR_CFG"
         ));
         private String filenamePattern = "FSAP每日交易統計(\\d{8})\\.xlsx";
 
@@ -138,6 +144,91 @@ public class FsapProperties {
 
         public void setMaxRounds(int maxRounds) {
             this.maxRounds = maxRounds;
+        }
+    }
+
+    /**
+     * 報表產出設定：額外要產出的業務分類，以及跨分類比較活頁簿。
+     */
+    public static class Report {
+        private List<String> targetBzkinds = new ArrayList<>();
+        private final CombinedWorkbook combinedWorkbook = new CombinedWorkbook();
+
+        public List<String> getTargetBzkinds() {
+            return targetBzkinds;
+        }
+
+        public void setTargetBzkinds(List<String> targetBzkinds) {
+            this.targetBzkinds = targetBzkinds;
+        }
+
+        public CombinedWorkbook getCombinedWorkbook() {
+            return combinedWorkbook;
+        }
+    }
+
+    /**
+     * 跨分類比較活頁簿：allSheets 固定排最前面（取 ALL 的結果），之後依 bzkinds 順序，
+     * 每個分類依 reports 順序加入分頁。dataSource 是報表 CSV 檔名；sheetName 的 {pr_bzkind} 會換成分類代碼。
+     * allSheets 與 reports 都是空的就不產出比較活頁簿。
+     */
+    public static class CombinedWorkbook {
+        private String filename = "比較_彙總";
+        private List<SheetSpec> allSheets = new ArrayList<>();
+        private List<String> bzkinds = new ArrayList<>();
+        private List<SheetSpec> reports = new ArrayList<>();
+
+        public String getFilename() {
+            return filename;
+        }
+
+        public void setFilename(String filename) {
+            this.filename = filename;
+        }
+
+        public List<SheetSpec> getAllSheets() {
+            return allSheets;
+        }
+
+        public void setAllSheets(List<SheetSpec> allSheets) {
+            this.allSheets = allSheets;
+        }
+
+        public List<String> getBzkinds() {
+            return bzkinds;
+        }
+
+        public void setBzkinds(List<String> bzkinds) {
+            this.bzkinds = bzkinds;
+        }
+
+        public List<SheetSpec> getReports() {
+            return reports;
+        }
+
+        public void setReports(List<SheetSpec> reports) {
+            this.reports = reports;
+        }
+    }
+
+    public static class SheetSpec {
+        private String sheetName;
+        private String dataSource;
+
+        public String getSheetName() {
+            return sheetName;
+        }
+
+        public void setSheetName(String sheetName) {
+            this.sheetName = sheetName;
+        }
+
+        public String getDataSource() {
+            return dataSource;
+        }
+
+        public void setDataSource(String dataSource) {
+            this.dataSource = dataSource;
         }
     }
 

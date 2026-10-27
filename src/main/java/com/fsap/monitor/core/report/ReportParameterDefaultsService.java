@@ -9,6 +9,8 @@ import java.util.List;
 
 import org.springframework.stereotype.Service;
 
+import com.fsap.monitor.infra.config.FsapProperties;
+
 @Service
 /**
  * 將部分填寫的報表參數請求補齊成完整可執行的參數集。
@@ -25,6 +27,12 @@ public class ReportParameterDefaultsService {
             DATE_TIME_FORMAT,
             DateTimeFormatter.ofPattern("yyyy-MM-dd'T'HH:mm")
     );
+    private final FsapProperties properties;
+
+    public ReportParameterDefaultsService(FsapProperties properties) {
+        this.properties = properties;
+    }
+
     /**
      * 回傳與 UI 初始畫面相同的預設報表參數。
      */
@@ -91,7 +99,10 @@ public class ReportParameterDefaultsService {
                 rangeStartTime.format(DATE_TIME_FORMAT),
                 rangeEndTime.format(DATE_TIME_FORMAT),
                 historyStartMonth.format(MONTH_FORMAT),
-                historyEndMonth.format(MONTH_FORMAT)
+                historyEndMonth.format(MONTH_FORMAT),
+                normalized.targetBzkinds() != null
+                        ? normalized.targetBzkinds()
+                        : ReportGenerationRequest.normalizeBzkinds(properties.getReport().getTargetBzkinds())
         );
     }
 

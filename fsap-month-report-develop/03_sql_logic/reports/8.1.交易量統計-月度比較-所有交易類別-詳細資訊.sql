@@ -2,6 +2,7 @@
 WITH params AS (
     --  MOM 控制台：一次設定兩個月份（可自行調整日期）
     SELECT
+        '${targetBzkind}' AS target_bzkind,   -- 業務分類（ALL＝不篩選）
         '${previousRangeStartTime}' AS StartTime_Mar,
         '${previousRangeEndTime}' AS EndTime_Mar,
         '${rangeStartTime}' AS StartTime_Apr,
@@ -27,6 +28,7 @@ BaseDaily_Mar AS (
     WHERE t.tx_dt_str BETWEEN SUBSTRING(p.StartTime_Mar, 1, 10) AND SUBSTRING(p.EndTime_Mar, 1, 10)
       AND t.tx_dt_str || ' ' || LPAD(CAST(t.tx_hour AS VARCHAR), 2, '0') || ':00' BETWEEN p.StartTime_Mar AND p.EndTime_Mar
       AND t.PR_ID NOT IN (SELECT PR_ID FROM Exclude_PR_ID)
+      AND (p.target_bzkind = 'ALL' OR t.pr_bzkind = p.target_bzkind)
     GROUP BY t.PR_ID, t.tx_dt_str
 ),
 
@@ -45,7 +47,7 @@ SystemStats_Mar AS (
         MIN(b.tx_dt_str) AS first_tx_date_Mar,
         MAX(b.tx_dt_str) AS last_tx_date_Mar
     FROM BaseDaily_Mar b
-    JOIN v_pr_info i ON b.PR_ID = i.PR_ID
+    JOIN v_cfg_pr_bzkind i ON b.PR_ID = i.PR_ID
     CROSS JOIN params p
     WHERE (i.PR_CATEGORY = p.TargetCategory OR p.TargetCategory = '')
     GROUP BY b.PR_ID, i.PR_CATEGORY
@@ -72,6 +74,7 @@ PeakHour_Mar AS (
     WHERE t.tx_dt_str BETWEEN SUBSTRING(p.StartTime_Mar, 1, 10) AND SUBSTRING(p.EndTime_Mar, 1, 10)
       AND t.tx_dt_str || ' ' || LPAD(CAST(t.tx_hour AS VARCHAR), 2, '0') || ':00' BETWEEN p.StartTime_Mar AND p.EndTime_Mar
       AND t.PR_ID NOT IN (SELECT PR_ID FROM Exclude_PR_ID)
+      AND (p.target_bzkind = 'ALL' OR t.pr_bzkind = p.target_bzkind)
     GROUP BY t.PR_ID
 ),
 
@@ -87,6 +90,7 @@ BaseDaily_Apr AS (
     WHERE t.tx_dt_str BETWEEN SUBSTRING(p.StartTime_Apr, 1, 10) AND SUBSTRING(p.EndTime_Apr, 1, 10)
       AND t.tx_dt_str || ' ' || LPAD(CAST(t.tx_hour AS VARCHAR), 2, '0') || ':00' BETWEEN p.StartTime_Apr AND p.EndTime_Apr
       AND t.PR_ID NOT IN (SELECT PR_ID FROM Exclude_PR_ID)
+      AND (p.target_bzkind = 'ALL' OR t.pr_bzkind = p.target_bzkind)
     GROUP BY t.PR_ID, t.tx_dt_str
 ),
 
@@ -105,7 +109,7 @@ SystemStats_Apr AS (
         MIN(b.tx_dt_str) AS first_tx_date_Apr,
         MAX(b.tx_dt_str) AS last_tx_date_Apr
     FROM BaseDaily_Apr b
-    JOIN v_pr_info i ON b.PR_ID = i.PR_ID
+    JOIN v_cfg_pr_bzkind i ON b.PR_ID = i.PR_ID
     CROSS JOIN params p
     WHERE (i.PR_CATEGORY = p.TargetCategory OR p.TargetCategory = '')
     GROUP BY b.PR_ID, i.PR_CATEGORY
@@ -132,6 +136,7 @@ PeakHour_Apr AS (
     WHERE t.tx_dt_str BETWEEN SUBSTRING(p.StartTime_Apr, 1, 10) AND SUBSTRING(p.EndTime_Apr, 1, 10)
       AND t.tx_dt_str || ' ' || LPAD(CAST(t.tx_hour AS VARCHAR), 2, '0') || ':00' BETWEEN p.StartTime_Apr AND p.EndTime_Apr
       AND t.PR_ID NOT IN (SELECT PR_ID FROM Exclude_PR_ID)
+      AND (p.target_bzkind = 'ALL' OR t.pr_bzkind = p.target_bzkind)
     GROUP BY t.PR_ID
 )
 
@@ -200,7 +205,7 @@ JOIN PeakDay_Mar pd ON m.PR_ID = pd.PR_ID AND pd.rn = 1
 JOIN PeakDay_Apr pd2 ON a.PR_ID = pd2.PR_ID AND pd2.rn = 1
 JOIN PeakHour_Mar ph ON m.PR_ID = ph.PR_ID
 JOIN PeakHour_Apr ph2 ON a.PR_ID = ph2.PR_ID
-JOIN v_pr_info i ON m.PR_ID = i.PR_ID
+JOIN v_cfg_pr_bzkind i ON m.PR_ID = i.PR_ID
 CROSS JOIN MonthlyTotal_Mar tm
 CROSS JOIN MonthlyTotal_Apr ta
 ORDER BY m.PR_CATEGORY DESC, m.sys_total_cnt_Mar DESC;

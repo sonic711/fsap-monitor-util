@@ -5,6 +5,7 @@
 
 WITH params AS (
     SELECT 
+        '${targetBzkind}' AS target_bzkind,   -- 業務分類（ALL＝不篩選）
         '${previousTargetMonth}' AS prev_month,
         '${targetMonth}' AS curr_month
 ),
@@ -15,18 +16,22 @@ PrevMonth AS (
         "類別",
         "名稱",
         "交易總量",
-        "交易量佔比"
+        CASE WHEN p.target_bzkind = 'ALL' THEN "交易量佔比" ELSE "分類內佔比" END AS "交易量佔比"
     FROM v_monthly_transaction_stats
-    WHERE 年月 = (SELECT prev_month FROM params)
+    CROSS JOIN params p
+    WHERE 年月 = p.prev_month
+      AND (p.target_bzkind = 'ALL' OR pr_bzkind = p.target_bzkind)
 ),
 
 CurrMonth AS (
     SELECT 
         "交易類型",
         "交易總量",
-        "交易量佔比"
+        CASE WHEN p.target_bzkind = 'ALL' THEN "交易量佔比" ELSE "分類內佔比" END AS "交易量佔比"
     FROM v_monthly_transaction_stats
-    WHERE 年月 = (SELECT curr_month FROM params)
+    CROSS JOIN params p
+    WHERE 年月 = p.curr_month
+      AND (p.target_bzkind = 'ALL' OR pr_bzkind = p.target_bzkind)
 )
 
 SELECT

@@ -14,11 +14,12 @@ public record ReportGenerationRequest(
         String rangeStartTime,
         String rangeEndTime,
         String historyStartMonth,
-        String historyEndMonth
+        String historyEndMonth,
+        List<String> targetBzkinds
 ) {
 
     public static ReportGenerationRequest empty() {
-        return new ReportGenerationRequest(null, false, null, null, null, null, null, null, null);
+        return new ReportGenerationRequest(null, false, null, null, null, null, null, null, null, null);
     }
 
     public ReportGenerationRequest normalize() {
@@ -31,12 +32,21 @@ public record ReportGenerationRequest(
                 trimToNull(rangeStartTime),
                 trimToNull(rangeEndTime),
                 trimToNull(historyStartMonth),
-                trimToNull(historyEndMonth)
+                trimToNull(historyEndMonth),
+                normalizeBzkinds(targetBzkinds)
         );
     }
 
     public Map<String, String> templateParameters() {
+        return templateParameters("ALL");
+    }
+
+    /**
+     * 指定本輪的業務分類（ALL 表示不篩選）。
+     */
+    public Map<String, String> templateParameters(String targetBzkind) {
         Map<String, String> parameters = new LinkedHashMap<>();
+        parameters.put("targetBzkind", targetBzkind);
         parameters.put("targetMonth", targetMonth);
         parameters.put("rangeStartDate", rangeStartDate);
         parameters.put("rangeEndDate", rangeEndDate);
@@ -67,10 +77,37 @@ public record ReportGenerationRequest(
         if (historyStartMonth != null || historyEndMonth != null) {
             parts.add("historyMonthRange=" + blankSafe(historyStartMonth) + "~" + blankSafe(historyEndMonth));
         }
+        if (targetBzkinds != null && !targetBzkinds.isEmpty()) {
+            parts.add("targetBzkinds=" + String.join(",", targetBzkinds));
+        }
         if (continueOnError) {
             parts.add("continueOnError=true");
         }
         return parts;
+    }
+
+    /**
+     * 解析逗號分隔的分類字串（CLI、網頁共用）：null 代表未指定（使用設定預設值），空字串代表只產 ALL。
+     */
+    public static List<String> parseBzkinds(String value) {
+        if (value == null) {
+            return null;
+        }
+        return java.util.Arrays.stream(value.split("[,，]")).map(String::trim).filter(item -> !item.isEmpty()).toList();
+    }
+
+    /**
+     * null 代表未指定（使用設定預設值）；非 null 時去空白、去空值並去重，保留輸入順序。
+     */
+    static List<String> normalizeBzkinds(List<String> values) {
+        if (values == null) {
+            return null;
+        }
+        return values.stream()
+                .map(ReportGenerationRequest::trimToNull)
+                .filter(java.util.Objects::nonNull)
+                .distinct()
+                .toList();
     }
 
     private static String trimToNull(String value) {

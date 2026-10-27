@@ -1,5 +1,6 @@
 WITH params AS (
     SELECT 
+        '${targetBzkind}' AS target_bzkind,   -- 業務分類（ALL＝不篩選）
         '${targetMonth}' AS TargetMonth,
         'FAC2FAS' AS ExcludePrId,
         ''  AS TargetCategory --  控制台：'update' 為交易類，'query' 為查詢類, '' 為全部
@@ -19,6 +20,7 @@ BaseDaily AS (
     CROSS JOIN params p
     WHERE t.tx_dt_str LIKE p.TargetMonth || '-%'
       AND t.PR_ID NOT IN (SELECT PR_ID FROM Exclude_PR_ID)
+      AND (p.target_bzkind = 'ALL' OR t.pr_bzkind = p.target_bzkind)
     GROUP BY t.PR_ID, t.tx_dt_str
 ),
 MonthlyTotal AS (
@@ -34,7 +36,7 @@ SystemStats AS (
         SUM(b.daily_cnt) AS sys_total_cnt,
         SUM(b.daily_avg_ms * b.daily_cnt) / NULLIF(SUM(b.daily_cnt), 0) AS sys_avg_ms
     FROM BaseDaily b
-    JOIN v_pr_info i ON b.PR_ID = i.PR_ID
+    JOIN v_cfg_pr_bzkind i ON b.PR_ID = i.PR_ID
     CROSS JOIN params p
     WHERE (i.PR_CATEGORY = p.TargetCategory OR p.TargetCategory = '') --  動態過濾分類
     GROUP BY b.PR_ID, i.PR_CATEGORY
@@ -53,7 +55,7 @@ PeakDayStats AS (
 SELECT 
     m.PR_ID AS "交易類型",
     m.PR_CATEGORY AS "類別",
-    COALESCE(i.PR_NAME, '未定義名稱') AS "名稱", --  自動從 v_pr_info 帶入中文名稱
+    COALESCE(i.PR_NAME, '未定義名稱') AS "名稱", -- 自動從 v_cfg_pr_bzkind（PR_CFG）帶入名稱
     m.sys_total_cnt AS "交易總量",
     CAST(ROUND(m.sys_avg_ms, 0) AS INT) AS "平均處理時間",
     
@@ -71,7 +73,7 @@ SELECT
 
 FROM SystemStats m
 JOIN PeakDayStats p ON m.PR_ID = p.PR_ID AND p.rn = 1
-JOIN v_pr_info i ON m.PR_ID = i.PR_ID
+JOIN v_cfg_pr_bzkind i ON m.PR_ID = i.PR_ID
 CROSS JOIN MonthlyTotal t
 ORDER BY m.PR_CATEGORY DESC, m.sys_total_cnt DESC
 ;

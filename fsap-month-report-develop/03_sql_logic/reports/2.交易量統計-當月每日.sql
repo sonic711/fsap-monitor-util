@@ -1,6 +1,7 @@
 WITH params AS (
     --  [參數控制台] 修改此處即可產出不同月份的報表
     SELECT 
+        '${targetBzkind}' AS target_bzkind,   -- 業務分類（ALL＝不篩選）
         '${targetMonth}' AS target_month,   -- 指定統計年月
         'FAC2FAS' AS exclude_pr_id    -- 指定要排除的交易代碼
 )
@@ -17,6 +18,7 @@ WHERE tx_yyyymm = p.target_month
 
 -- 條件 2：排除特定交易類型
   AND PR_ID != p.exclude_pr_id
+  AND (p.target_bzkind = 'ALL' OR pr_bzkind = p.target_bzkind)
 
 -- 這裡保持用完整的日期來分組和排序，確保不會亂掉
 GROUP BY 1

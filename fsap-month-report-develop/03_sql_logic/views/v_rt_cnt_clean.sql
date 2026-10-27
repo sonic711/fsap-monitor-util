@@ -43,7 +43,7 @@ final AS (
 -- [修改點] 這裡直接進行 SELECT 並使用 QUALIFY 去重，移除了 dedup CTE
 SELECT
   CALDY,
-  PR_ID,
+  final.PR_ID,
   total_cnt, ok_cnt, fail_cnt, rev_ok_cnt, timeout_cnt, other_err_cnt,
   file_dt,
   strftime(file_dt, '%Y-%m-%d') AS file_dt_str,
@@ -63,10 +63,14 @@ SELECT
     ELSE (CALDY = strftime(COALESCE(tx_dt_from_ts, tx_dt_from_caldy), '%m%d'))
   END AS caldy_match_txdt,
 
+  COALESCE(bz.PR_BZKIND, '其他/待分類') AS pr_bzkind,
+
   _file, _sheet, _dt, _ingest_ts
 
 FROM final
+LEFT JOIN v_cfg_pr_bzkind bz
+  ON final.PR_ID = bz.PR_ID
 QUALIFY ROW_NUMBER() OVER (
-    PARTITION BY COALESCE(tx_dt_from_ts, tx_dt_from_caldy), PR_ID
+    PARTITION BY COALESCE(tx_dt_from_ts, tx_dt_from_caldy), final.PR_ID
     ORDER BY file_dt DESC, _dt DESC, _file DESC
 ) = 1;

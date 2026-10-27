@@ -7,6 +7,7 @@
 
 WITH params AS (
     SELECT
+        '${targetBzkind}' AS target_bzkind,   -- 業務分類（ALL＝不篩選）
         '${targetMonth}' AS TargetMonth,
         '' AS TargetCategory -- 'update' / 'query' / ''(全部)
 )
@@ -22,7 +23,7 @@ SELECT
     "峰時交易量",
     "平均處理時間",
     "峰值處理時間",
-    "交易量佔比",
+    CASE WHEN p.target_bzkind = 'ALL' THEN "交易量佔比" ELSE "分類內佔比" END AS "交易量佔比",
     "交易開始日期",
     "交易結束日期",
     "實際交易天數"
@@ -31,4 +32,5 @@ FROM v_monthly_transaction_stats
 CROSS JOIN params p
 WHERE "年月" = p.TargetMonth
   AND ("類別" = p.TargetCategory OR p.TargetCategory = '')
+  AND (p.target_bzkind = 'ALL' OR pr_bzkind = p.target_bzkind)
 ORDER BY "類別" DESC, "交易總量" DESC;

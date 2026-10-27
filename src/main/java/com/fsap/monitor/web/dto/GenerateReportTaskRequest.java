@@ -11,11 +11,12 @@ public record GenerateReportTaskRequest(
         String rangeStartTime,
         String rangeEndTime,
         String historyStartMonth,
-        String historyEndMonth
+        String historyEndMonth,
+        String targetBzkinds
 ) {
 
     public static GenerateReportTaskRequest empty() {
-        return new GenerateReportTaskRequest(null, false, null, null, null, null, null, null, null);
+        return new GenerateReportTaskRequest(null, false, null, null, null, null, null, null, null, null);
     }
 
     public ReportGenerationRequest toReportGenerationRequest() {
@@ -28,7 +29,8 @@ public record GenerateReportTaskRequest(
                 rangeStartTime,
                 rangeEndTime,
                 historyStartMonth,
-                historyEndMonth
+                historyEndMonth,
+                ReportGenerationRequest.parseBzkinds(targetBzkinds)
         );
     }
 }

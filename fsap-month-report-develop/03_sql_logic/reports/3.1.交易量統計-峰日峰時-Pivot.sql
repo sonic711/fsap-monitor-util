@@ -1,6 +1,7 @@
 WITH params AS (
     --  [參數控制台] 修改此處即可產出不同月份的報表
     SELECT 
+        '${targetBzkind}' AS target_bzkind,   -- 業務分類（ALL＝不篩選）
         '${targetMonth}' AS target_month,   -- 指定統計年月
         'FAC2FAS' AS exclude_pr_id    -- 指定要排除的交易代碼
 ),
@@ -11,6 +12,7 @@ peak_day_select AS (
     CROSS JOIN params p
     WHERE tx_yyyymm = p.target_month 
       AND PR_ID != p.exclude_pr_id
+      AND (p.target_bzkind = 'ALL' OR pr_bzkind = p.target_bzkind)
     GROUP BY tx_dt_str
     ORDER BY SUM(tx_cnt) DESC
     LIMIT 1
@@ -25,6 +27,7 @@ PIVOT (
     CROSS JOIN params p
     WHERE tx_dt_str = (SELECT tx_dt_str FROM peak_day_select)
       AND PR_ID != p.exclude_pr_id
+      AND (p.target_bzkind = 'ALL' OR pr_bzkind = p.target_bzkind)
 ) 
 -- 步驟 2：指定把「小時」這個欄位攤平成橫向的欄位
 ON "小時" 

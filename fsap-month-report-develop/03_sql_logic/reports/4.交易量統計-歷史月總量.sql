@@ -1,5 +1,6 @@
 WITH params AS (
     SELECT
+        '${targetBzkind}' AS target_bzkind,   -- 業務分類（ALL＝不篩選）
         '${historyStartMonth}' AS StartYM,   -- 往前推一個月作為基底
         '${historyEndMonth}' AS EndYM,
         'FAC2FAS' AS ExcludePrId --  將排除清單也參數化
@@ -18,6 +19,7 @@ MonthlyVolume AS (
     WHERE (1 = 1)
       AND t.tx_yyyymm BETWEEN p.StartYM AND p.EndYM
       AND t.PR_ID NOT IN (SELECT PR_ID FROM Exclude_PR_ID)
+      AND (p.target_bzkind = 'ALL' OR t.pr_bzkind = p.target_bzkind)
     GROUP BY t.tx_yyyymm
 ),
 CalcDiff AS (

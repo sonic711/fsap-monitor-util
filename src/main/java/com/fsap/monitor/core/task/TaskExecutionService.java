@@ -162,6 +162,11 @@ public class TaskExecutionService {
             details.addAll(result.effectiveRequest().summaryParts());
             details.add("success=" + successCount);
             details.add("failure=" + result.failures().size());
+            result.passResults().forEach(pass -> details.add("pass=" + pass.targetBzkind() + " workbook=" + pass.workbookPath()));
+            if (result.comparisonWorkbookPath() != null) {
+                details.add("comparison=" + result.comparisonWorkbookPath());
+            }
+            result.notices().forEach(notice -> details.add("notice=" + notice));
             result.reportResults().forEach(report -> details.add(
                     report.reportName() + " -> " + (report.success() ? "OK rows=" + report.rowCount() : "FAIL " + report.errorMessage())
             ));
