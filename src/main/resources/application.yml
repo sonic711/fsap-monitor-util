@@ -44,6 +44,7 @@ fsap:
       - BIS
       - FAC
       - NIS
+      - FSAP
     combined-workbook:
       filename: 比較_彙總
       all-sheets:
@@ -63,6 +64,7 @@ fsap:
         - BIS
         - FAC
         - NIS
+        - FSAP
       reports:
         - sheet-name: "{pr_bzkind}-交易量統計"
           data-source: 1.交易量統計-當月.csv

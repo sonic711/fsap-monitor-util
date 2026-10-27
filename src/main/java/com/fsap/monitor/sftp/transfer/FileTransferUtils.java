@@ -12,10 +12,17 @@ public class FileTransferUtils {
 	private final static Pattern IPADDRESS_PATTERN = Pattern.compile("(?:(?:25[0-5]|2[0-4][0-9]|[01]?[0-9][0-9]?)\\.){3}(?:25[0-5]|2[0-4][0-9]|[01]?[0-9][0-9]?)");
 
 	public static FileTransfer newInstance(ConnectInfo connectInfo) {
+		if (connectInfo == null) {
+			throw new IllegalArgumentException("Missing file transfer connection settings");
+		}
 		return newInstance(connectInfo.getUrl(), connectInfo.getUsername(), connectInfo.getCode());
 	};
 
 	private static FileTransfer newInstance(String hostUrl, String username, String code) {
+		if (hostUrl == null || hostUrl.isBlank()) {
+			throw new IllegalArgumentException("Missing required connection setting: remote.url. "
+					+ "Check the external config/application.yml used by this process.");
+		}
 		Matcher ipMatcher = IPADDRESS_PATTERN.matcher(hostUrl);
 		if (ipMatcher.find()) {
 			String ip = ipMatcher.group();

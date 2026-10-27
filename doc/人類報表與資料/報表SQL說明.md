@@ -41,9 +41,14 @@ UI 目前只提供 `targetMonth`、`historyStartMonth`、`historyEndMonth`；日
 
 除 `1.1` 至 `1.1.4`（CPU／記憶體監控）外，所有報表都以 `pr_bzkind = ${targetBzkind}` 篩選；`${targetBzkind}` 為 `ALL` 時不篩選，結果與未加入分類功能前相同。
 
+`1.交易量統計-當月.sql` 的「系統」欄會顯示本輪分類代碼，例如 `NIS`、`FSAP`；總覽顯示「全系統（ALL）」。`FSAP` 只包含 `PR_BZKIND=FSAP` 的交易，不等於全系統。
+
 CPU／記憶體監控（`1.1` 至 `1.1.4`）以主機為單位，不依業務分類篩選。Java 版每一輪（`ALL` 與各分類）都會執行所有報表，所以各分類資料夾與活頁簿裡也會有內容相同的這幾張報表；`1.1.4` 約 720 列，重複的份數較大，內容不影響各分類報表的數字。
 
+監控報表的 FSAP 名稱代表受監控的平台主機，不是交易分類，因此不隨業務分類改名。
+
 - 要產出哪些分類由 `--target-bzkinds` 或設定 `fsap.report.target-bzkinds` 決定，見 [啟動與產生報表](../人類操作/啟動與產生報表.md)。
+- 預設包含 `NCL`、`NCB`、`BIS`、`FAC`、`NIS`、`FSAP`。比較活頁簿另外依 `fsap.report.combined-workbook.bzkinds` 選取分類；使用外部清單時，兩處都要包含要比較的分類。
 - 分類來自 `PR_CFG`（見 [ViewSQL說明](ViewSQL說明.md) 的 `v_cfg_pr_bzkind`）；不在 `PR_CFG` 的程式歸「其他/待分類」，只會出現在 `ALL`。報表 7、8 系列的交易類別（`update`／`query`）與名稱也取自 `PR_CFG`（類別由 `PR_TPKIND` 決定），所以這些報表只列出 `PR_CFG` 內有的程式。
 - 指定分類時，報表內的總量與佔比都以該分類為範圍：有佔比欄的 `7`、`7.1`、`7.2`、`8.1`、`8.2` 分母為該分類的當月總量；`8`、`8.3` 在分類輪改取 `v_monthly_transaction_stats` 的「分類內佔比」（分母同為該分類當月總量），輸出欄名不變。
 - 分類沒有資料時，動態 PIVOT 報表（`2.1`、`3.1` 等）沿用既有處理，輸出「Message」提示頁。

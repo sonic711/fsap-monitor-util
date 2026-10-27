@@ -16,6 +16,22 @@ remote:
 
 替換主機與帳號；`code` 沿用部署環境提供的加密值。
 
+如果下載出現 `Cannot invoke "java.lang.CharSequence.length()" because "this.text" is null`，先查看 `logs/sftp_download.log` 的 `START` 紀錄。若 `remoteUrl=null`，表示沒有讀到 `remote.url`，不是 Excel 內容錯誤；`doctor` 不會檢查 SFTP 設定。確認正式設定檔可由執行帳號讀取，並保留原有 `remote` 區塊，不要用 JAR 內的預設 `application.yml` 覆蓋它。
+
+可先用下列方式明確指定正式設定檔驗證，不需先換 JAR。設定檔參數要放在 `download-input` 指令之前：
+
+```bash
+cd /app/fsap-monitor-util
+/app/java/java17/bin/java \
+  -Djava.io.tmpdir=/app/fsap-monitor-util/tmp \
+  -jar /app/fsap-monitor-util/fsap-monitor-util-0.1.0-SNAPSHOT.jar \
+  --spring.config.additional-location=file:/app/fsap-monitor-util/config/application.yml \
+  --fsap.paths.base-dir=/app/fsap-monitor-util/fsap-month-report-develop \
+  download-input --date 20261027
+```
+
+日期請改成要下載的日期。確認成功後，可將同一個 `--spring.config.additional-location=...` 加到 Jenkins 的 Java 啟動指令中，位置同樣在子指令之前。若紀錄已出現 `CONNECTED`，表示已讀取連線設定並連上 SFTP，請提供後續錯誤堆疊排查目錄或檔案操作，不要直接判定為設定未載入。
+
 ## 下載每日 Excel
 
 ```bash

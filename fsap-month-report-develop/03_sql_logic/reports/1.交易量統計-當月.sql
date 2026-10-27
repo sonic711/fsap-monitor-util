@@ -1,10 +1,13 @@
 WITH Config AS (
-    --  步驟 0：【參數控制台】未來換月或換系統，只要改這裡的 3 行就好！
+    -- 步驟 0：由產報程序帶入月份與業務分類，顯示名稱跟隨本輪分類。
     SELECT 
         '${targetBzkind}' AS target_bzkind,   -- 業務分類（ALL＝不篩選）
         '${targetMonth}' AS target_month,       -- 指定要查詢的年月
         'FAC2FAS' AS exclude_pr_id,             -- 指定要排除的交易代碼
-        '金融服務應用平台 FSAP' AS report_sys_name -- 報表上要顯示的系統名稱
+        CASE
+            WHEN '${targetBzkind}' = 'ALL' THEN '全系統（ALL）'
+            ELSE '${targetBzkind}'
+        END AS report_sys_name
 ),
 FSAP_Daily AS (
     -- 步驟 1：算出每天的全系統加總交易量
