@@ -5,6 +5,7 @@ import groovy.transform.Field
 @Field String jarName = 'fsap-monitor-util-0.1.0-SNAPSHOT.jar'
 @Field String baseDir = '/app/fsap-monitor-util/fsap-month-report-develop'
 @Field String sshOptions = '-o BatchMode=yes -o StrictHostKeyChecking=accept-new'
+@Field String javaTmpDir = '/app/fsap-monitor-util/tmp'
 
 def hasTargetHost() {
     return params.TARGET_HOST?.trim()
@@ -33,8 +34,9 @@ def runRemote(String label, String remoteScript) {
 
 def fsapCommand(String command) {
     return [
+        "mkdir -p \"${javaTmpDir}\"",
         "cd \"${installDir}\"",
-        "/app/java/java17/bin/java -jar \"${installDir}/${jarName}\" --fsap.paths.base-dir=\"${baseDir}\" ${command}"
+        "/app/java/java17/bin/java -Djava.io.tmpdir=\"${javaTmpDir}\" -jar \"${installDir}/${jarName}\" --fsap.paths.base-dir=\"${baseDir}\" ${command}"
     ].join('\n')
 }
 
