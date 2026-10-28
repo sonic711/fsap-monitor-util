@@ -1,5 +1,7 @@
 # FSAP Maven 專案骨架與 pom 依賴清單
 
+> 歷史資產：以下保留舊版行為與規劃，不代表現行 Java 功能。對應 Python 腳本、啟動器及舊工具未由目前 Git 收錄，重現前需取得相應舊版。現行操作請看 [文件索引](../../README.md)。
+
 > 狀態：歷史文件。專案現行以 Gradle Wrapper 建置，Spring Boot 為 `3.5.14`、Java 為 17，`pom.xml` 已移除。請不要再依本文件建立或維護 Maven build；實際建置與離線 repository 準備請以 `doc/人類部署與建置/Gradle離線建置.md` 為準。
 
 本文件承接以下既有決策：

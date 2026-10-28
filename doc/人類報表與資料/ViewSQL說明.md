@@ -34,6 +34,7 @@
 - 適用 view：`v_rt_pr_hh24_clean`、`v_rt_cnt_clean`、`v_rt_node_hh24_clean`、`v_rt_tmspt_clean`、`v_rt_cnt_daily`、`v_rt_cnt_weekly`、`v_rt_cnt_monthly`、`v_monthly_transaction_stats`。
 - 以 `LEFT JOIN v_cfg_pr_bzkind` 取得分類；不在 `PR_CFG` 或分類為空者歸「其他/待分類」。`LEFT JOIN` 不丟列，所以報表以 `ALL`（不篩選）執行時仍包含未分類程式。
 - `PR_CFG` 每天是完整快照，數據湖保留每一天，`v_cfg_pr_bzkind` 只取 `_dt` 最新的一份；同一 `PR_ID` 只會對應一個分類。
+- 同一最新日期有重複 PR_ID 時依 `_ingest_ts` 較新者優先。所有歷史交易月份都用最新分類，不是各月份當時的分類。
 - `v_rt_tmspt_clean` 以原始 `PR_ID` 對應分類，不使用正規化後的 `pr_id_norm`（`G61` 正規化為 `G0061` 後會與 `PR_CFG` 的代號對不上）。
 - `v_rt_cnt_daily`、`v_rt_cnt_weekly`、`v_rt_cnt_monthly` 的 `pr_bzkind` 同時是分組維度，聚合結果按分類分列。
 
@@ -44,9 +45,11 @@
 - 峰時：該月內小時交易量最高的時段；若同量，取較早日期、較早小時。
 - 月總量與佔比：以 `v_rt_pr_hh24_clean.tx_cnt` 彙總。
 - 分類內佔比：分母為該分類當月總量（口徑同月總量，只改成同一分類內加總）；「交易量佔比」的分母仍是整個系統。
+- 此 view 不排除 FAC2FAS。沒有 PR_CFG 對照的交易可能留在總量分母，但不出現在最後的交易明細。
+- 查詢月份使用輸出欄位 `"年月"`，例如 `SELECT * FROM v_monthly_transaction_stats WHERE "年月" = '2026-10'`，不是內部 CTE 欄位 year_month。
 
 ## 4. 數據清理策略說明
 依資料來源不同，部分清洗 view 會採用以下處理：
 1.  **跨年修正**：交易資料 view 會比較解析日期與檔案日期，修正跨年檔案的日期誤差。
 2.  **正規化**：將原始欄位轉為正確型別 (`DATE`、`TIMESTAMP`、`DECIMAL`)。
-3.  **去重**：需要去重的來源以 `QUALIFY` 與 `ROW_NUMBER()` 依關鍵維度保留最新記錄；元資料與純聚合 view 不一定套用此步驟。
+3.  **去重**：各 view 以不同鍵與排序選取一筆，不可一概稱為保留最新記錄。交易清洗通常優先較新來源日期；PR_CFG 優先匯入時間；MON_LOG 以種類、IP、port、監控時間去重，相同鍵未再指定以最新匯入者優先。

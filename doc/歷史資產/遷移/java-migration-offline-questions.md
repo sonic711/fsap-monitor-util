@@ -1,6 +1,7 @@
 # FSAP Python -> Java 全面移植與離線部署實作問題清單
 
-> 狀態更新：v1.1 之後專案已改為 Gradle Wrapper 建置，`pom.xml` 已移除；離線部署改以 Gradle 產出的 Maven repository layout 建置，可用 `--offline -PofflineRepo=...` 指向解壓目錄，或解壓到 Maven local。
+> 歷史資產：以下保留舊版行為與規劃，不代表現行 Java 功能。對應 Python 腳本、啟動器及舊工具未由目前 Git 收錄，重現前需取得相應舊版。現行操作請看 [文件索引](../../README.md)。
+
 
 本文件整理目前專案中所有已識別的 Python 使用點，並將「全面改寫為 Java」與「可完整移植到離線環境」所需先釐清的實作問題彙整成一份 kickoff 清單。
 

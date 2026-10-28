@@ -1,6 +1,7 @@
 # 監控數據自動更新工具說明 (update_monitor_data)
 
-> 歷史文件：本檔描述 Python 工具透過 REST API 匯出資料的方式。現行 Java `update-monitor-data` 會同步 views 後直接查詢 DuckDB，輸出 CSV 與 JS；請參考 [啟動與產生報表](../../人類操作/啟動與產生報表.md)。
+> 歷史資產：以下保留舊版行為與規劃，不代表現行 Java 功能。對應 Python 腳本、啟動器及舊工具未由目前 Git 收錄，重現前需取得相應舊版。現行操作請看 [文件索引](../../README.md)。
+
 
 本工具負責自動化維運監控數據的擷取與產出。它透過呼叫系統的 REST API 服務，從 DuckDB 資料庫獲取最新的監控指標，並將資料轉換為 CSV 與 JS 格式，供前端儀表板使用。
 
@@ -110,29 +111,29 @@ monitor-data/
 當執行 `python3 scripts/update_monitor_data/update_monitor_data.py` 時，終端輸出如下：
 ...
 ```text
-🚀 開始透過 API 更新監控資料至: 04_report_output/monitor-data
+ 開始透過 API 更新監控資料至: 04_report_output/monitor-data
 
 [處理中] v_prod_monitor_daily_count...
-  🔍 SQL Query: SELECT *
+   SQL Query: SELECT *
         FROM v_prod_monitor_daily_count
         WHERE CAST(log_date AS TIMESTAMP) >= (
             SELECT MAX(CAST(log_date AS TIMESTAMP)) FROM v_prod_monitor_daily_count
         ) - INTERVAL 10 DAY
         ORDER BY application, TARGET_IP, log_date DESC
         LIMIT 10000;
-  📝 已產出 CSV: daily_data.csv
-  🌐 已產出 JS: daily_data.js
+   已產出 CSV: daily_data.csv
+   已產出 JS: daily_data.js
 
 [處理中] v_prod_monitor_hourly_count...
-  🔍 SQL Query: SELECT *
+   SQL Query: SELECT *
         FROM v_prod_monitor_hourly_count
         WHERE CAST(log_date AS TIMESTAMP) >= (
             SELECT MAX(CAST(log_date AS TIMESTAMP)) FROM v_prod_monitor_hourly_count
         ) - INTERVAL 4 DAY
         ORDER BY application, TARGET_IP, log_date DESC, log_hour DESC
         LIMIT 10000;
-  📝 已產出 CSV: hourly_data.csv
-  🌐 已產出 JS: hourly_data.js
+   已產出 CSV: hourly_data.csv
+   已產出 JS: hourly_data.js
 ```
 
 ## 7. 檔案格式:

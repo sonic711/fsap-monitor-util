@@ -1,8 +1,9 @@
 # FSAP 維運月報自動化中心 - 知識庫：API Server 文件
 
+> 歷史資產：以下保留舊版行為與規劃，不代表現行 Java 功能。對應 Python 腳本、啟動器及舊工具未由目前 Git 收錄，重現前需取得相應舊版。現行操作請看 [文件索引](../../README.md)。
+
 歡迎使用 FSAP 維運月報自動化中心。本文件彙整了所有相關技術手冊與操作指南，協助您快速存取資訊。
 
-> 歷史文件：本檔描述保留的 FastAPI 版 `scripts/api_server.py`。現行 API 由 Java Spring Boot 提供，請參考 [啟動與產生報表](../../人類操作/啟動與產生報表.md)；現行端點為 `/health`、`/api/query`、`/api/schema` 與 `/api/tasks/*`。
 
 本專案提供一個輕量級的 REST API 接口，允許前端應用程式（如 HTML/JS 儀表板）直接向 DuckDB 執行 SQL 查詢並獲取結果。
 

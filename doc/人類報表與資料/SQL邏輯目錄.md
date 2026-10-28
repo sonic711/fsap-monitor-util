@@ -14,9 +14,11 @@ SQL 位於 `<base-dir>/03_sql_logic/`。
 
 ## 業務分類預設資料
 
-業務分類來自數據湖 `<base-dir>/02_source_lake/PR_CFG/`。專案附有一份預設快照 `PR_CFG-20261022.jsonl.gz`，讓 `v_cfg_pr_bzkind` 在尚未匯入任何 `PR_CFG` 分頁時也能建立（`sync-views` 可執行）。預設快照取自臺銀 2026-10-22 每日 Excel 的 `PR_CFG`（128 筆，含 `PR_TPKIND`，`_dt=20261022`）。`generate-report` 的前置檢查會要求最新快照每筆都有 1 或 2 的 `PR_TPKIND`（決定交易類別），否則中止並說明原因；之後匯入含 `PR_CFG` 分頁的 Excel：日期較新的快照會自動取代預設快照（view 只取 `_dt` 最新的一份，同一天則取匯入時間較新者），**較新的快照若沒有 `PR_TPKIND` 仍會中止**；日期早於 `20261022` 的快照（例如臺銀 2026-10-22 之前沒有 `PR_TPKIND` 的檔）不會取代它，因此用舊檔重跑時仍使用預設快照的名稱與類別。不需要刪除預設檔。
+業務分類來自 `<base-dir>/02_source_lake/PR_CFG/`。**快照不在目前 Git 追蹤內容中**；新 clone 後，請先匯入含有效 PR_CFG 的每日 Excel，或取得可信交付所附快照。舊交付可能包含 `PR_CFG-20261022.jsonl.gz`，但不能假設原始碼一定附帶。
 
-數據湖完全沒有 `PR_CFG` 檔時，`sync-views` 會因 `v_cfg_pr_bzkind` 的 `No files found` 失敗，所有依賴它的 view 與報表也無法執行；若預設檔被刪除，請從專案還原。
+view 選所有檔案中 `_dt` 最新的一份快照，再依 PR_ID 的匯入時間去重。最新快照每筆 PR_TPKIND 都須有效（1 或 2），否則產報中止；匯入較舊快照不會改變目前分類。重跑歷史月報也使用最新分類，不依目標月份回溯。
+
+完全沒有 PR_CFG 檔時，同步會因 No files found 失敗。補上來源並重新 ingest／sync-views；快照未被 Git 追蹤，不能只靠 git restore 還原它。
 
 - 要找某分頁的 SQL：[報表SQL說明](報表SQL說明.md)。
 - 要找 view 的資料來源：[ViewSQL說明](ViewSQL說明.md)。

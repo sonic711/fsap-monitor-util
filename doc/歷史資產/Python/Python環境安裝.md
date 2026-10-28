@@ -1,6 +1,7 @@
 # FSAP 維運月報自動化中心 - 知識庫：Python 環境安裝指南 (Windows / macOS)
 
-> 歷史文件：僅在執行保留的 Python 舊版腳本時才需要 Python。現行 Java 版執行需求為 Java 17；請參考 [啟動與產生報表](../../人類操作/啟動與產生報表.md)。
+> 歷史資產：以下保留舊版行為與規劃，不代表現行 Java 功能。對應 Python 腳本、啟動器及舊工具未由目前 Git 收錄，重現前需取得相應舊版。現行操作請看 [文件索引](../../README.md)。
+
 
 歡迎使用 FSAP 維運月報自動化中心。本文件彙整了所有相關技術手冊與操作指南，協助您快速存取資訊。
 
@@ -8,7 +9,7 @@
 
 ---
 
-## 🪟 Windows 安裝步驟
+## Windows 安裝步驟
 
 ### 1. 下載安裝程式
 - 前往 [Python 官方下載頁面](https://www.python.org/downloads/windows/)。
@@ -48,7 +49,7 @@ streamlit run scripts/fsap-month-report-db.py
 
 ---
 
-## 🍎 macOS 安裝步驟
+## macOS 安裝步驟
 
 ### 方案 A：使用 Homebrew (推薦)
 如果你有安裝 Homebrew，這是最快速的方式：
@@ -81,7 +82,7 @@ bash scripts/start-fsap-month-report-db.sh
 
 ---
 
-## 💡 常見問題 (Q&A)
+## 常見問題 (Q&A)
 
 ### Q1: 為什麼輸入 python 顯示「找不到指令」？
 - **Windows**: 通常是因為安裝時未勾選 "Add Python to PATH"。請重新執行安裝程式並選擇 "Modify"，或手動將 Python 路徑加入系統環境變數。

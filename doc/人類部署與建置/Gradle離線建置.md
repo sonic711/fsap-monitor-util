@@ -16,9 +16,11 @@ GRADLE_USER_HOME=$PWD/.gradle-online ./gradlew prepareOfflineBundle
 | `build/offline-gradle/gradle-8.13-all.zip` | Gradle 執行工具本身 |
 | `build/libs/fsap-monitor-util-0.1.0-SNAPSHOT.jar` | 本專案的可執行 JAR |
 
-只要 Maven 倉庫可執行 `zipOfflineMavenRepo`；只缺 Gradle ZIP 可執行 `downloadGradleDistribution`。
+只要產生 Maven 倉庫可執行 `zipOfflineMavenRepo`；只缺 Gradle ZIP 可執行 `downloadGradleDistribution`。prepareOfflineBundle 會編譯測試類別，但不會自動執行 test；要驗證測試請另外執行。
 
-預設 `resolved` 模式只挑目前專案及 buildscript 解析到的 JAR/AAR，但保留 cache 中的 POM/module 描述檔，並補齊可解析的 parent POM 與 BOM。它不是整份 `.gradle` 備份，也不保證倉庫沒有 CVE。
+預設 `resolved` 按目前專案與 buildscript 可解析配置的模組座標選擇 JAR/AAR；同座標已快取的其他 classifier 也可能包含，並非精準只含執行期使用的檔案。所有已快取 POM/module 都保留，程式會巡覽可辨識的 parent POM 與 BOM 關係，但不會憑空補出 cache 缺少的 metadata。它不是整份 `.gradle` 備份，也不保證沒有舊版或有弱點的內容。
+
+必須先讓所需依賴存在同一個 GRADLE_USER_HOME。若某套件只從 Maven local 或其他檔案目錄取得，沒有進入 Gradle module cache，此轉換不一定能收錄；務必做第 4 節的乾淨環境驗證。
 
 要把 task 引入其他專案，或轉換整份 cache，請看 [離線Maven倉庫Task](Gradle離線Maven倉庫Task.md)。
 

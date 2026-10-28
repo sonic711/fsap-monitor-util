@@ -1,5 +1,7 @@
 # FSAP 維運月報自動化中心 - 知識庫 (Knowledge Base)
 
+> 歷史資產：以下保留舊版行為與規劃，不代表現行 Java 功能。對應 Python 腳本、啟動器及舊工具未由目前 Git 收錄，重現前需取得相應舊版。現行操作請看 [文件索引](../../README.md)。
+
 歡迎使用 FSAP 維運月報自動化中心。本文件彙整了所有相關技術手冊與操作指南，協助您快速存取資訊。
 
 > 目前正式操作入口為 Java 版。請優先閱讀 [啟動與產生報表](../../人類操作/啟動與產生報表.md)、[專案維護指引](../../人類操作/專案維護指引.md) 與 [Gradle離線建置](../../人類部署與建置/Gradle離線建置.md)。以下 Python 腳本流程僅保留作為舊版比對與資料回溯參考，不應作為日常執行指令。
@@ -9,7 +11,7 @@
 
 ---
 
-## 🛠 核心流程與組件 (Core Workflow)
+## 核心流程與組件 (Core Workflow)
 
 本系統採用「數據湖」架構，確保原始資料、處理邏輯與最終產出完全解耦：
 
@@ -25,24 +27,24 @@ graph LR
     end
 ```
 
-### 🚀 Step 1: 數據標準化工廠 (`scripts/step1_ingest.py`)
+### Step 1: 數據標準化工廠 (`scripts/step1_ingest.py`)
 - **功能**：將 `01_excel_input` 中的 Excel 轉化為標準 JSONL 格式。
 - **模式**：
     - **增量匯入**：預設模式，自動跳過已處理過的日期，極速補齊缺失資料。
     - **強制重轉**：使用 `--force` 參數，全量重新加工所有原始資料。
 - **產出**：存入 `02_source_lake` 分類目錄。
 
-### 👓 View 同步工具 (`scripts/update_views_to_db.py`)
+### View 同步工具 (`scripts/update_views_to_db.py`)
 - **功能**：將 `03_sql_logic/views` 中的 SQL 定義持久化寫入實體資料庫。
 - **特色**：支援 **「自動重試依賴」** 機制，無需擔心 SQL 視圖之間的引用先後順序。
 
-### 📊 Step 2: 報表產出引擎 (`scripts/step2_report.py`)
+### Step 2: 報表產出引擎 (`scripts/step2_report.py`)
 - **核心**：連接實體 DuckDB 資料庫，執行 `03_sql_logic/reports` 中的 SQL。
 - **產出**：
     - 在 `04_report_output` 依執行時間建立**專屬子目錄** (如 `202604201030`)。
     - 同步產出 **「彙總 Excel 報表」** 與 **「各項 SQL 的獨立 CSV 檔」**。
 
-### 🖥️ 互動查詢儀表板 (`scripts/fsap-month-report-db.py`)
+### 互動查詢儀表板 (`scripts/fsap-month-report-db.py`)
 - **定位**：提供維運同仁「自助式」的數據探索與深度分析工具。
 - **功能亮點**：
     - **高效能分析**：基於 DuckDB 高效查詢引擎，支援 SQL 探索與多 Tab 獨立查詢。
@@ -52,7 +54,7 @@ graph LR
 
 ---
 
-## 📂 目錄架構說明 (Directory Structure)
+## 目錄架構說明 (Directory Structure)
 
 本專案已達成 **「零絕對路徑 (Zero Absolute Path)」** 設計，可在任何目錄下移植。
 
@@ -72,7 +74,7 @@ FSAP-Month-Report/
 
 ---
 
-## 🏁 快速開始 (Getting Started)
+## 快速開始 (Getting Started)
 
 ### 1. 環境準備
 系統需求：**Python 3.10+** (建議 3.13.x)。
@@ -96,7 +98,7 @@ python3 scripts/step2_report.py
 
 ---
 
-## 📜 日誌管理 (Log Management)
+## 日誌管理 (Log Management)
 系統所有的運行軌跡皆存放於 `logs/` 目錄：
 - `ingest.log`: 數據標準化過程紀錄。
 - `view_sync.log`: 資料庫視圖同步紀錄。
@@ -106,7 +108,7 @@ python3 scripts/step2_report.py
 
 ---
 
-## 📖 相關文件索引
+## 相關文件索引
 - [**Python 環境安裝**](Python環境安裝.md)：僅供重跑舊版腳本時使用。
 - [**Python 資料匯入**](Python資料匯入.md)：舊版 Excel 轉 JSONL 流程。
 - [**Python 報表產出**](Python報表產出.md)：舊版 DuckDB 報表產出流程。

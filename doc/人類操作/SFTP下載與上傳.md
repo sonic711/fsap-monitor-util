@@ -16,7 +16,11 @@ remote:
 
 替換主機與帳號；`code` 沿用部署環境提供的加密值。
 
+此設定範例不會連線；正式帳號、目的地與寫入權限仍需在目標環境驗證。`remote.defPath` 不是目前 download-input 的預設搜尋根目錄，搜尋根目錄用 --remote-root 指定。
+
 如果下載出現 `Cannot invoke "java.lang.CharSequence.length()" because "this.text" is null`，先查看 `logs/sftp_download.log` 的 `START` 紀錄。若 `remoteUrl=null`，表示沒有讀到 `remote.url`，不是 Excel 內容錯誤；`doctor` 不會檢查 SFTP 設定。確認正式設定檔可由執行帳號讀取，並保留原有 `remote` 區塊，不要用 JAR 內的預設 `application.yml` 覆蓋它。
+
+新版同樣的缺設定情況會顯示 `Missing required connection setting: remote.url`；舊的 null 訊息通常來自較舊 JAR。
 
 可先用下列方式明確指定正式設定檔驗證，不需先換 JAR。設定檔參數要放在 `download-input` 指令之前：
 
@@ -60,6 +64,8 @@ fsap upload-report
 
 自動選檔按批次目錄的最後修改時間排序，再選該批次根目錄中最後修改的 `.xlsx`，不是按報表月份選取。兩個 Job 應錯開，避免產報與上傳之間插入另一批成品；要補發指定月份，請用下方 `--local-file` 明確指定。
 
+只有 12 位數字名稱的批次目錄會被自動搜尋；最新批次無根目錄 Excel 時會繼續找較舊批次。選檔不驗證檔名前綴、report-params 或產報成功狀態，所以手動 upload-report 前仍須核對實際選檔與 failure=0，不能把「有檔」當成可上傳的保證。
+
 要補發特定報表時，明確指定完整本機路徑與目的地：
 
 ```bash
@@ -80,4 +86,4 @@ fsap upload-report \
 | `latest-sftp-download.json` | 最近成功下載的來源與上傳預設目的地 |
 | `sftp_upload.log` | 上傳檔案、目的地與失敗原因 |
 
-每日產報與每月上傳分成兩個 Job，流程及補檔限制見 [Jenkins 補檔與排程](啟動與產生報表.md#5-jenkins-補檔與排程)。
+每日產報與每月上傳分成兩個 Job，流程及補檔限制見 [Jenkins 排程](啟動與產生報表.md#5-jenkins-排程)。

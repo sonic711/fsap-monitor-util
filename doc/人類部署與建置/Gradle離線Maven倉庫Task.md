@@ -45,7 +45,7 @@ zipOfflineMavenRepo
 
 ### 3.1 resolved 模式
 
-`resolved` 是預設模式，只打包目前專案實際解析到的 `.jar` / `.aar`，並保留 `.pom` / `.module` metadata。
+`resolved` 是預設模式，掃描目前專案可解析的 configurations，預設也包含 buildscript。JAR／AAR 依解析到的 group、artifact、version 篩選，而非只依 runtimeClasspath 的實際檔案；同座標其他已快取 classifier 可能一起收錄。所有已快取 POM／module metadata 都保留，並非完全精簡的最小倉庫。
 
 適合依正式專案目前解析的版本產生離線包：
 
@@ -78,7 +78,25 @@ offlineMavenRepo {
 }
 ```
 
-注意：`all-cache` 會把 cache 裡所有 jar/aar 都打包，可能包含其他專案或舊版弱點 jar。若目標是降低弱掃命中，請使用 `resolved`。
+注意：all-cache 可能包含其他專案與舊版套件。resolved 可縮小二進位套件範圍，但仍保留其他版本 metadata，不代表已清除所有弱掃命中。
+
+空專案至少需要 settings.gradle、build.gradle、這份 script 與可用的 Gradle。最小 settings.gradle：
+
+```groovy
+rootProject.name = 'offline-cache-export'
+```
+
+最小 build.gradle：
+
+```groovy
+apply from: "${rootDir}/gradle/offline-maven-repo.gradle"
+offlineMavenRepo {
+    artifactSelectionMode = 'all-cache'
+    prepareTaskNames = []
+}
+```
+
+若未準備 Wrapper，可使用已解壓 Gradle 的 bin/gradle 執行；`--offline` 不能替 Wrapper 下載 Gradle 本體。
 
 ## 4. 可調整設定
 
@@ -100,7 +118,7 @@ offlineMavenRepo {
 | `zipFileName` | `offline-maven-repo.zip` | 壓縮檔名稱 |
 | `includeBuildscript` | `true` | 是否納入 `buildscript` classpath 依賴，例如 Gradle plugin |
 | `artifactSelectionMode` | `resolved` | `resolved` 或 `all-cache` |
-| `prepareTaskNames` | `bootJar`, `jar`, `testClasses` 中存在者 | 產生離線 repo 前要先執行的 task |
+| `prepareTaskNames` | 未指定時採 `bootJar`, `jar`, `testClasses` 中存在者 | 本專案覆寫為 bootJar、testClasses；空清單表示不跑前置 task，未找到的名稱會略過 |
 
 ## 5. 產生 Maven 離線包
 
@@ -120,7 +138,7 @@ build/offline-maven-repo.zip
 若是空專案轉換一整包既有 `.gradle` cache：
 
 ```bash
-GRADLE_USER_HOME=/path/to/copied/.gradle ./gradlew zipOfflineMavenRepo
+GRADLE_USER_HOME=/path/to/copied/.gradle ./gradlew --offline zipOfflineMavenRepo
 ```
 
 ## 6. 離線環境使用方式
@@ -136,7 +154,7 @@ unzip offline-maven-repo.zip -d /opt/fsap/offline-maven-repo
 離線建置：
 
 ```bash
-./gradlew --offline -PofflineRepo=/opt/fsap/offline-maven-repo bootJar -x test
+./gradlew --offline -PofflineRepo=/opt/fsap/offline-maven-repo bootJar
 ```
 
 目標專案的 `build.gradle` 需要有類似設定：
@@ -161,7 +179,7 @@ repositories {
 
 ```bash
 unzip offline-maven-repo.zip -d ~/.m2/repository
-./gradlew --offline bootJar -x test
+./gradlew --offline bootJar
 ```
 
 前提是目標專案 repositories 已宣告：
@@ -179,6 +197,9 @@ repositories {
 
 - `prepareTaskNames = []` 代表不先執行任何建置 task，適合空專案轉 cache。
 - `all-cache` 只轉換指定 cache 已有的 JAR、AAR、POM、module，不會補出未曾下載的檔案，也不包含 Gradle distribution 或其他工具 cache。
+- 每次準備會刪除並重建 outputDir，不能直接指向正式 Maven local 或其他重要資料目錄；先輸出到專用目錄，再搬移或解壓。
+- 此 script 只處理套用它的 project 配置，不會自動巡覽整個多模組專案。其他專案可能還需 Node、原生工具或非 Maven cache，須另行準備。
+- 插件與 parent POM／BOM 只在已快取且可辨識的範圍內提供；Maven local 有而 Gradle module cache 沒有的檔案可能遺漏。
 - 引入此 script 只新增兩個倉庫 task，不會新增本專案的 `downloadGradleDistribution` 或 `prepareOfflineBundle`。
 - `-PofflineRepo` 需目標專案自行讀取與設定。使用 `plugins {}` 的專案，還需在 `settings.gradle` 的 `pluginManagement.repositories` 指向離線倉庫，並備妥 plugin marker 與插件依賴。
 - 產生 ZIP 成功只代表轉換完成，仍需實際離線建置驗證。
