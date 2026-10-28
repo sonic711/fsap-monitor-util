@@ -47,7 +47,7 @@ class ApplicationConfigurationTest {
                 "--server.port=18091", "--fsap.paths.base-dir=/test/config-override")) {
             var properties = context.getBean(FsapProperties.class);
             assertThat(properties.getReport().getTargetBzkinds())
-                    .containsExactly("NCL", "NCB", "BIS", "FAC", "NIS", "FSAP");
+                    .containsExactly("NCL", "NCB", "BIS", "FAC", "FAS", "NIS", "FSAP");
             assertThat(properties.getReport().getCombinedWorkbook().getAllSheets()).hasSize(10);
             assertThat(properties.getReport().getCombinedWorkbook().getReports()).hasSize(8);
             properties.getReport().validateConfiguration();

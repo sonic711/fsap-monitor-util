@@ -19,7 +19,7 @@ class ReportDefaultsTest {
         var properties = TestApplicationSettings.load();
         var request = new ReportGenerationRequest(null, false, "2026-10", null, null, null, null, null, null, null);
         var kinds = new ReportParameterDefaultsService(properties).resolve(request).targetBzkinds();
-        assertThat(kinds).containsExactly("NCL", "NCB", "BIS", "FAC", "NIS", "FSAP");
+        assertThat(kinds).containsExactly("NCL", "NCB", "BIS", "FAC", "FAS", "NIS", "FSAP");
         var config = properties.getReport().getCombinedWorkbook();
         assertThat(config.getBzkinds()).containsExactlyElementsOf(kinds);
 
@@ -38,7 +38,7 @@ class ReportDefaultsTest {
 
         var plan = ComparisonWorkbookPlanner.plan(config, tables, kinds);
         assertThat(plan.messages()).isEmpty();
-        assertThat(plan.sheets()).hasSize(58);
+        assertThat(plan.sheets()).hasSize(66);
         assertThat(plan.sheets().get(1).sheetName()).isEqualTo("總覽-CPU-MEM峰日峰時");
         assertThat(plan.sheets().get(1).table().rows().get(0))
                 .containsExactly("ALL", "1.1.2. CPU-MEM監控-峰日峰時.csv");
@@ -58,6 +58,10 @@ class ReportDefaultsTest {
         assertThat(fsapSheets).hasSize(8);
         assertThat(fsapSheets).allSatisfy(sheet ->
                 assertThat(sheet.table().rows().get(0).get(0)).isEqualTo("FSAP"));
+        var fasSheets = plan.sheets().stream().filter(sheet -> sheet.sheetName().startsWith("FAS-")).toList();
+        assertThat(fasSheets).hasSize(8);
+        assertThat(fasSheets).allSatisfy(sheet ->
+                assertThat(sheet.table().rows().get(0).get(0)).isEqualTo("FAS"));
         Map<String, String> pivotSources = Map.of(
                 "當月每日", "2.1.交易量統計-當月每日-Pivot.csv",
                 "峰日峰時", "3.1.交易量統計-峰日峰時-Pivot.csv",

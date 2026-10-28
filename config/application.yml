@@ -40,6 +40,7 @@ fsap:
       - NCB
       - BIS
       - FAC
+      - FAS
       - NIS
       - FSAP
     combined-workbook:
@@ -69,6 +70,7 @@ fsap:
         - NCB
         - BIS
         - FAC
+        - FAS
         - NIS
         - FSAP
       reports:

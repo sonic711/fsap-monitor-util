@@ -88,7 +88,9 @@ class ReportOutputLayoutTest {
                     .containsExactlyInAnyOrder(filename, "report-params.json");
         }
         try (var input = Files.newInputStream(result.workbookPath()); var workbook = new XSSFWorkbook(input)) {
-            assertThat(workbook.getNumberOfSheets()).isEqualTo(58);
+            assertThat(workbook.getNumberOfSheets()).isEqualTo(66);
+            assertThat(workbook.getSheet("FAS-交易量統計").getRow(1).getCell(0).getStringCellValue())
+                    .isEqualTo("FAS");
             var monitoring = workbook.getSheetAt(1);
             assertThat(monitoring.getSheetName()).isEqualTo("總覽-CPU-MEM峰日峰時");
             assertThat(monitoring.getRow(1).getCell(0).getStringCellValue()).isEqualTo("ALL");

@@ -47,7 +47,7 @@ ALL includes unmatched transaction IDs; category summaries use PR_BZKIND. Report
 
 - Batch root: final `維運月度報表_MM月彙總_<timestamp>.xlsx` and `report-params.json`.
 - `SUM/`: ALL full workbook and every report CSV; categories keep equivalent outputs under their codes.
-- Comparison defaults: 10 ALL sheets (including TOP6 update/query from 7.1/7.2) plus 8 sheets × 6 kinds = 58 sheets.
+- Comparison defaults: 10 ALL sheets (including TOP6 update/query from 7.1/7.2) plus 8 sheets × 7 kinds (including FAS) = 66 sheets.
 - Daily/peak/history peak tables use reports 2.1, 3.1, 5.1 and 6.1; history monthly totals retain report 4.
 - No REPORT directory; `combined-workbook.filename` is ignored/removed.
 - No executed kinds, disabled comparison or no selected tables: root final workbook is copied from ALL.
