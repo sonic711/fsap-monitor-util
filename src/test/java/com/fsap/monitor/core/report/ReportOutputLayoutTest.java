@@ -88,7 +88,7 @@ class ReportOutputLayoutTest {
                     .containsExactlyInAnyOrder(filename, "report-params.json");
         }
         try (var input = Files.newInputStream(result.workbookPath()); var workbook = new XSSFWorkbook(input)) {
-            assertThat(workbook.getNumberOfSheets()).isEqualTo(56);
+            assertThat(workbook.getNumberOfSheets()).isEqualTo(58);
             var monitoring = workbook.getSheetAt(1);
             assertThat(monitoring.getSheetName()).isEqualTo("總覽-CPU-MEM峰日峰時");
             assertThat(monitoring.getRow(1).getCell(0).getStringCellValue()).isEqualTo("ALL");
@@ -96,6 +96,16 @@ class ReportOutputLayoutTest {
                     .isEqualTo("1.1.2. CPU-MEM監控-峰日峰時");
             assertThat(workbook.getSheet("總覽-當月每日").getRow(1).getCell(1).getStringCellValue())
                     .isEqualTo("2.1.交易量統計-當月每日-Pivot");
+            for (String category : List.of("交易類", "查詢類")) {
+                String report = "交易類".equals(category) ? "7.1." : "7.2.";
+                var top6 = workbook.getSheet("總覽-TOP6" + category);
+                assertThat(top6).isNotNull();
+                assertThat(top6.getRow(1).getCell(0).getStringCellValue()).isEqualTo("ALL");
+                assertThat(top6.getRow(1).getCell(1).getStringCellValue())
+                        .isEqualTo(report + "交易量統計-TOP6" + category);
+                assertThat(root.resolve("SUM/" + report + "交易量統計-TOP6" + category + ".csv"))
+                        .isRegularFile();
+            }
             assertThat(workbook.getSheet("FSAP-歷史峰日峰時").getRow(1).getCell(1).getStringCellValue())
                     .isEqualTo("6.1.交易量統計-歷史峰日峰時-Pivot");
             assertThat(workbook.getSheet("FSAP-歷史峰日峰時").getRow(1).getCell(0).getStringCellValue())

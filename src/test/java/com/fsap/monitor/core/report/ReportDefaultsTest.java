@@ -38,12 +38,22 @@ class ReportDefaultsTest {
 
         var plan = ComparisonWorkbookPlanner.plan(config, tables, kinds);
         assertThat(plan.messages()).isEmpty();
-        assertThat(plan.sheets()).hasSize(56);
+        assertThat(plan.sheets()).hasSize(58);
         assertThat(plan.sheets().get(1).sheetName()).isEqualTo("總覽-CPU-MEM峰日峰時");
         assertThat(plan.sheets().get(1).table().rows().get(0))
                 .containsExactly("ALL", "1.1.2. CPU-MEM監控-峰日峰時.csv");
         assertThat(plan.sheets().stream().filter(sheet -> sheet.sheetName().contains("CPU-MEM")).toList())
                 .hasSize(1);
+        Map<String, String> top6Sources = Map.of(
+                "總覽-TOP6交易類", "7.1.交易量統計-TOP6交易類.csv",
+                "總覽-TOP6查詢類", "7.2.交易量統計-TOP6查詢類.csv");
+        for (var top6 : top6Sources.entrySet()) {
+            var sheet = plan.sheets().stream()
+                    .filter(item -> item.sheetName().equals(top6.getKey())).findFirst().orElseThrow();
+            assertThat(sheet.table().rows().get(0)).containsExactly("ALL", top6.getValue());
+        }
+        assertThat(plan.sheets().subList(7, 10)).extracting(sheet -> sheet.sheetName())
+                .containsExactly("總覽-TOP6交易類", "總覽-TOP6查詢類", "總覽-MOM交易量比較");
         var fsapSheets = plan.sheets().stream().filter(sheet -> sheet.sheetName().startsWith("FSAP-")).toList();
         assertThat(fsapSheets).hasSize(8);
         assertThat(fsapSheets).allSatisfy(sheet ->

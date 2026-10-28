@@ -58,6 +58,10 @@ fsap:
           data-source: 5.1.交易量統計-歷史峰日-Pivot.csv
         - sheet-name: 總覽-歷史峰日峰時
           data-source: 6.1.交易量統計-歷史峰日峰時-Pivot.csv
+        - sheet-name: 總覽-TOP6交易類
+          data-source: 7.1.交易量統計-TOP6交易類.csv
+        - sheet-name: 總覽-TOP6查詢類
+          data-source: 7.2.交易量統計-TOP6查詢類.csv
         - sheet-name: 總覽-MOM交易量比較
           data-source: 8.3.交易量統計-MOM交易量比較.csv
       bzkinds:
