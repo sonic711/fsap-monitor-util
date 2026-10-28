@@ -16,6 +16,8 @@ GRADLE_USER_HOME=$PWD/.gradle-online ./gradlew prepareOfflineBundle
 | `build/offline-gradle/gradle-8.13-all.zip` | Gradle 執行工具本身 |
 | `build/libs/fsap-monitor-util-0.1.0-SNAPSHOT.jar` | 本專案的可執行 JAR |
 
+bootJar 不會將根目錄 config/application.yml 或 monitor-data.json 包入 JAR。部署時須另帶外部設定並保留目標環境連線值；新版缺少報表清單會中止產報，見 [設定檔分工與覆寫](../人類操作/設定檔分工與覆寫.md)。
+
 只要產生 Maven 倉庫可執行 `zipOfflineMavenRepo`；只缺 Gradle ZIP 可執行 `downloadGradleDistribution`。prepareOfflineBundle 會編譯測試類別，但不會自動執行 test；要驗證測試請另外執行。
 
 預設 `resolved` 按目前專案與 buildscript 可解析配置的模組座標選擇 JAR/AAR；同座標已快取的其他 classifier 也可能包含，並非精準只含執行期使用的檔案。所有已快取 POM/module 都保留，程式會巡覽可辨識的 parent POM 與 BOM 關係，但不會憑空補出 cache 缺少的 metadata。它不是整份 `.gradle` 備份，也不保證沒有舊版或有弱點的內容。

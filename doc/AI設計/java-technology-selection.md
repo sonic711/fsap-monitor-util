@@ -23,6 +23,7 @@ Checked against `build.gradle` and source on 2026-10-28. This replaces the origi
 
 - Running a built JAR needs Java 17, external config and the data/SQL directory, not Gradle, Python, Node.js or a running DuckDB server.
 - SQL and reference data remain external to the JAR.
+- Root config/application.yml contains deployment and business settings, including all report sheet definitions; classpath application.yml retains only stable internal defaults. Both files must be considered when testing configuration. Report generation rejects missing external report lists.
 - Offline compilation needs JDK 17, Gradle distribution, original sources and the exported Maven-layout repository.
 - Buildscript plugin dependencies and application dependencies are exported; the Gradle distribution is a separate ZIP.
 - `resolved` exports JAR/AAR files for resolved module coordinates but retains all cached POM/module files. `all-cache` exports all supported files already in module cache. Neither is a complete Gradle-user-home backup.

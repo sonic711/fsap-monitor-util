@@ -8,22 +8,15 @@ import java.util.List;
 import java.util.Map;
 
 import org.junit.jupiter.api.Test;
-import org.springframework.boot.context.properties.bind.Bindable;
-import org.springframework.boot.context.properties.bind.Binder;
-import org.springframework.boot.context.properties.source.ConfigurationPropertySources;
-import org.springframework.boot.env.YamlPropertySourceLoader;
-import org.springframework.core.io.ClassPathResource;
 
 import com.fsap.monitor.core.report.ReportGenerationService.QueryTable;
-import com.fsap.monitor.infra.config.FsapProperties;
+import com.fsap.monitor.support.TestApplicationSettings;
 
 class ReportDefaultsTest {
 
     @Test
-    void packagedDefaultsProduceFsapAndUsePivotForDailyAndPeakComparisonSheets() throws Exception {
-        var sources = new YamlPropertySourceLoader().load("defaults", new ClassPathResource("application.yml"));
-        var properties = new Binder(ConfigurationPropertySources.from(sources))
-                .bind("fsap", Bindable.of(FsapProperties.class)).get();
+    void externalSettingsProduceFsapAndUsePivotForDailyAndPeakComparisonSheets() throws Exception {
+        var properties = TestApplicationSettings.load();
         var request = new ReportGenerationRequest(null, false, "2026-10", null, null, null, null, null, null, null);
         var kinds = new ReportParameterDefaultsService(properties).resolve(request).targetBzkinds();
         assertThat(kinds).containsExactly("NCL", "NCB", "BIS", "FAC", "NIS", "FSAP");

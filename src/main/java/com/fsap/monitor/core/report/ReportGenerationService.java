@@ -99,6 +99,7 @@ public class ReportGenerationService {
      * 最後依設定把各輪結果合成一份跨分類比較活頁簿。
      */
     public ReportGenerationResult generate(ReportGenerationRequest request) {
+        properties.getReport().validateConfiguration();
         ReportGenerationRequest effectiveRequest = reportParameterDefaultsService.resolve(request);
         String timestamp = effectiveRequest.timestamp() != null
                 ? effectiveRequest.timestamp()

@@ -1,15 +1,7 @@
+# 穩定的程式預設；部署與報表規則請放在外部 config/application.yml。
 spring:
   application:
     name: fsap-monitor-util
-  thymeleaf:
-    cache: false
-  servlet:
-    multipart:
-      max-file-size: 200MB
-      max-request-size: 200MB
-
-server:
-  port: 8080
 
 jasypt:
   encryptor:
@@ -17,75 +9,9 @@ jasypt:
 
 fsap:
   paths:
-    base-dir: .
     input-dir: 01_excel_input
     source-lake-dir: 02_source_lake
     sql-logic-dir: 03_sql_logic
     report-output-dir: 04_report_output
-    database-file: 05_database/fsap-month-report.duckdb
-    log-dir: logs
-  ingest:
-    target-sheets:
-      - RT_CNT
-      - RT_TMSPT
-      - RT_PR_HH24
-      - RT_NODE_HH24
-      - BT_CNT
-      - MON_LOG
-      - ERR_LOG
-      - PR_CFG
-    filename-pattern: "FSAP每日交易統計(\\d{8})\\.xlsx"
   views:
     max-rounds: 3
-  report:
-    target-bzkinds:
-      - NCL
-      - NCB
-      - BIS
-      - FAC
-      - NIS
-      - FSAP
-    combined-workbook:
-      all-sheets:
-        - sheet-name: 總覽-交易量統計
-          data-source: 1.交易量統計-當月.csv
-        - sheet-name: 總覽-當月每日
-          data-source: 2.1.交易量統計-當月每日-Pivot.csv
-        - sheet-name: 總覽-峰日峰時
-          data-source: 3.1.交易量統計-峰日峰時-Pivot.csv
-        - sheet-name: 總覽-歷史月總量
-          data-source: 4.交易量統計-歷史月總量.csv
-        - sheet-name: 總覽-歷史峰日
-          data-source: 5.1.交易量統計-歷史峰日-Pivot.csv
-        - sheet-name: 總覽-歷史峰日峰時
-          data-source: 6.1.交易量統計-歷史峰日峰時-Pivot.csv
-        - sheet-name: 總覽-MOM交易量比較
-          data-source: 8.3.交易量統計-MOM交易量比較.csv
-      bzkinds:
-        - NCL
-        - NCB
-        - BIS
-        - FAC
-        - NIS
-        - FSAP
-      reports:
-        - sheet-name: "{pr_bzkind}-交易量統計"
-          data-source: 1.交易量統計-當月.csv
-        - sheet-name: "{pr_bzkind}-當月每日"
-          data-source: 2.1.交易量統計-當月每日-Pivot.csv
-        - sheet-name: "{pr_bzkind}-峰日峰時"
-          data-source: 3.1.交易量統計-峰日峰時-Pivot.csv
-        - sheet-name: "{pr_bzkind}-歷史峰日"
-          data-source: 5.1.交易量統計-歷史峰日-Pivot.csv
-        - sheet-name: "{pr_bzkind}-歷史峰日峰時"
-          data-source: 6.1.交易量統計-歷史峰日峰時-Pivot.csv
-        - sheet-name: "{pr_bzkind}-TOP6交易類"
-          data-source: 7.1.交易量統計-TOP6交易類.csv
-        - sheet-name: "{pr_bzkind}-TOP6查詢類"
-          data-source: 7.2.交易量統計-TOP6查詢類.csv
-        - sheet-name: "{pr_bzkind}-所有交易類別"
-          data-source: 7.交易量統計-所有交易類別.csv
-  web:
-    readonly: false
-  monitor:
-    config-file: config/monitor-data.json

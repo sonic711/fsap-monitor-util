@@ -153,6 +153,7 @@ public class FsapProperties {
     public static class Report {
         private List<String> targetBzkinds = new ArrayList<>();
         private final CombinedWorkbook combinedWorkbook = new CombinedWorkbook();
+        private boolean targetBzkindsConfigured;
 
         public List<String> getTargetBzkinds() {
             return targetBzkinds;
@@ -160,10 +161,30 @@ public class FsapProperties {
 
         public void setTargetBzkinds(List<String> targetBzkinds) {
             this.targetBzkinds = targetBzkinds;
+            this.targetBzkindsConfigured = targetBzkinds != null;
         }
 
         public CombinedWorkbook getCombinedWorkbook() {
             return combinedWorkbook;
+        }
+
+        public void validateConfiguration() {
+            // 區分「未部署設定」與明確的空清單，避免漏設定時靜默降級成 ALL 月報。
+            List<String> missing = new ArrayList<>();
+            if (!targetBzkindsConfigured) {
+                missing.add("fsap.report.target-bzkinds");
+            }
+            if (!combinedWorkbook.allSheetsConfigured) {
+                missing.add("fsap.report.combined-workbook.all-sheets");
+            }
+            if (!combinedWorkbook.reportsConfigured) {
+                missing.add("fsap.report.combined-workbook.reports");
+            }
+            if (!missing.isEmpty()) {
+                throw new IllegalStateException("Missing required report settings in external config/application.yml: "
+                        + String.join(", ", missing)
+                        + ". Load the complete external settings before generating reports; explicit empty lists are allowed.");
+            }
         }
     }
 
@@ -176,6 +197,8 @@ public class FsapProperties {
         private List<SheetSpec> allSheets = new ArrayList<>();
         private List<String> bzkinds = new ArrayList<>();
         private List<SheetSpec> reports = new ArrayList<>();
+        private boolean allSheetsConfigured;
+        private boolean reportsConfigured;
 
         public List<SheetSpec> getAllSheets() {
             return allSheets;
@@ -183,6 +206,7 @@ public class FsapProperties {
 
         public void setAllSheets(List<SheetSpec> allSheets) {
             this.allSheets = allSheets;
+            this.allSheetsConfigured = allSheets != null;
         }
 
         public List<String> getBzkinds() {
@@ -199,6 +223,7 @@ public class FsapProperties {
 
         public void setReports(List<SheetSpec> reports) {
             this.reports = reports;
+            this.reportsConfigured = reports != null;
         }
     }
 

@@ -1,6 +1,9 @@
 package com.fsap.monitor.core.report;
 
 import static org.assertj.core.api.Assertions.assertThat;
+import static org.assertj.core.api.Assertions.assertThatThrownBy;
+import static org.mockito.Mockito.mock;
+import static org.mockito.Mockito.verifyNoInteractions;
 
 import java.nio.file.Files;
 import java.nio.file.Path;
@@ -11,11 +14,6 @@ import java.util.Set;
 import org.apache.poi.xssf.usermodel.XSSFWorkbook;
 import org.junit.jupiter.api.Test;
 import org.junit.jupiter.api.io.TempDir;
-import org.springframework.boot.context.properties.bind.Bindable;
-import org.springframework.boot.context.properties.bind.Binder;
-import org.springframework.boot.context.properties.source.ConfigurationPropertySources;
-import org.springframework.boot.env.YamlPropertySourceLoader;
-import org.springframework.core.io.ClassPathResource;
 
 import com.fasterxml.jackson.databind.ObjectMapper;
 import com.fsap.monitor.core.artifact.ArtifactBrowseService;
@@ -23,6 +21,7 @@ import com.fsap.monitor.core.service.ProjectPathService;
 import com.fsap.monitor.core.viewsync.ViewSyncService;
 import com.fsap.monitor.infra.config.FsapProperties;
 import com.fsap.monitor.infra.duckdb.DuckDbConnectionFactory;
+import com.fsap.monitor.support.TestApplicationSettings;
 
 class ReportOutputLayoutTest {
 
@@ -33,9 +32,7 @@ class ReportOutputLayoutTest {
     private ProjectPathService paths;
 
     private ReportGenerationService service() throws Exception {
-        var sources = new YamlPropertySourceLoader().load("defaults", new ClassPathResource("application.yml"));
-        properties = new Binder(ConfigurationPropertySources.from(sources))
-                .bind("fsap", Bindable.of(FsapProperties.class)).get();
+        properties = TestApplicationSettings.load();
         properties.getPaths().setBaseDir(baseDirectory.toString());
         paths = new ProjectPathService(properties);
         var factory = new DuckDbConnectionFactory(paths);
@@ -124,5 +121,25 @@ class ReportOutputLayoutTest {
         assertThat(Files.mismatch(result.workbookPath(), result.passResults().get(0).workbookPath())).isEqualTo(-1L);
         assertThat(result.runDirectory().resolve("FSAP/維運月度報表_10月彙總_FSAP_202611020330.xlsx"))
                 .isRegularFile();
+    }
+
+    @Test
+    void missingExternalSettingsStopBeforeCreatingArtifactsOrOpeningDatabase() {
+        var missing = new FsapProperties();
+        missing.getPaths().setBaseDir(baseDirectory.toString());
+        var missingPaths = new ProjectPathService(missing);
+        var factory = mock(DuckDbConnectionFactory.class);
+        var service = new ReportGenerationService(missingPaths, factory, null,
+                new ReportParameterDefaultsService(missing), new ObjectMapper(), missing);
+
+        assertThatThrownBy(() -> service.generate(request(List.of())))
+                .isInstanceOf(IllegalStateException.class)
+                .hasMessageContaining("external config/application.yml")
+                .hasMessageContaining("fsap.report.target-bzkinds")
+                .hasMessageContaining("fsap.report.combined-workbook.all-sheets")
+                .hasMessageContaining("fsap.report.combined-workbook.reports");
+        assertThat(missingPaths.reportOutputDir()).doesNotExist();
+        assertThat(missingPaths.databaseFile()).doesNotExist();
+        verifyNoInteractions(factory);
     }
 }

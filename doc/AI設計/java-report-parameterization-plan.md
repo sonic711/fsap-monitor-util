@@ -6,6 +6,8 @@ Checked against source on 2026-10-28. The filename is retained for existing link
 
 `ReportGenerationRequest` is shared by CLI and Web DTO conversion. `ReportParameterDefaultsService` normalizes, derives and validates values.
 
+Business settings now live exclusively in root config/application.yml, not classpath application.yml. `FsapProperties.Report.validateConfiguration()` distinguishes absent lists from explicit empty lists and rejects missing target-bzkinds, all-sheets or reports before generation. Do not restore hardcoded report fallbacks in the JAR; explicit empty configuration still supports ALL-only/disabled comparison.
+
 | Input | Actual behavior |
 | --- | --- |
 | `targetMonth` | Explicit value wins; otherwise derive from rangeEndDate, rangeStartDate, rangeEndTime, rangeStartTime, in that order; otherwise previous month in JVM default timezone |

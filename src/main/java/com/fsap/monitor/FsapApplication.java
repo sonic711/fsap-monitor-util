@@ -1,6 +1,5 @@
 package com.fsap.monitor;
 
-import java.net.URISyntaxException;
 import java.nio.file.Path;
 import java.util.Arrays;
 import java.util.LinkedHashMap;
@@ -13,6 +12,7 @@ import org.springframework.boot.SpringApplication;
 import org.springframework.boot.WebApplicationType;
 import org.springframework.boot.autoconfigure.SpringBootApplication;
 import org.springframework.boot.context.properties.ConfigurationPropertiesScan;
+import org.springframework.boot.system.ApplicationHome;
 
 /**
  * 同時支援 CLI 與 Spring Boot Web 模式的統一啟動入口。
@@ -80,18 +80,8 @@ public class FsapApplication {
     }
 
     private static Path applicationHome() {
-        try {
-            Path codeSource = Path.of(FsapApplication.class.getProtectionDomain()
-                    .getCodeSource()
-                    .getLocation()
-                    .toURI());
-            if (codeSource.toFile().isFile()) {
-                return codeSource.getParent();
-            }
-            return codeSource;
-        } catch (URISyntaxException | RuntimeException exception) {
-            return Path.of(System.getProperty("user.dir"));
-        }
+        // ApplicationHome 能辨識 Spring Boot nested JAR，避免跨工作目錄啟動時漏讀外部設定。
+        return new ApplicationHome(FsapApplication.class).getDir().toPath();
     }
 
     private static String asConfigDirectory(Path directory) {

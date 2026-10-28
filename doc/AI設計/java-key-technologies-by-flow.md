@@ -4,7 +4,9 @@ Checked against source on 2026-10-28. Class names below are relative to `src/mai
 
 ## Startup and Paths
 
-`FsapApplication` chooses CLI or Web mode, translates serve flags and supplies optional external config locations next to the application code source and its `config/` directory. Packaged execution and `bootRun` do not have the same code-source directory. Use an explicit `--spring.config.additional-location=file:/.../application.yml` before the command when the location must be deterministic.
+`FsapApplication` chooses CLI or Web mode, translates serve flags and uses Spring Boot `ApplicationHome` to locate the outer executable JAR, including nested-JAR URLs. Its home and config directory are optional additional locations; standard working-directory locations still apply. Use an explicit `--spring.config.additional-location=file:/.../application.yml` before the command for deterministic deployment.
+
+Classpath application.yml contains stable defaults only. Root config/application.yml owns operational settings, ingest rules and report lists and is not packaged. Report generation validates explicit presence of target-bzkinds, all-sheets and reports before resolving parameters, creating a batch or opening the DB. Explicit empty lists are allowed; missing lists fail rather than silently falling back to ALL. Other commands and Web initialization remain available for diagnosis.
 
 `ProjectPathService` resolves configured data paths against `fsap.paths.base-dir` and rewrites recognized SQL path literals to absolute paths. It does not relocate Spring config or all CLI path overrides.
 
