@@ -14,6 +14,8 @@ import java.util.Set;
 import org.apache.poi.xssf.usermodel.XSSFWorkbook;
 import org.junit.jupiter.api.Test;
 import org.junit.jupiter.api.io.TempDir;
+import org.junit.jupiter.params.ParameterizedTest;
+import org.junit.jupiter.params.provider.ValueSource;
 
 import com.fasterxml.jackson.databind.ObjectMapper;
 import com.fsap.monitor.core.artifact.ArtifactBrowseService;
@@ -68,9 +70,11 @@ class ReportOutputLayoutTest {
         return new ReportGenerationRequest("202611020330", false, "2026-10", null, null, null, null, null, null, kinds);
     }
 
-    @Test
-    void finalWorkbookIsAtBatchRootAndAllArtifactsAreUnderSum() throws Exception {
+    @ParameterizedTest
+    @ValueSource(booleans = {true, false})
+    void finalWorkbookIsAtBatchRootAndAllArtifactsAreUnderSum(boolean materializeViews) throws Exception {
         var service = service();
+        properties.getReport().setMaterializeViews(materializeViews);
         var result = service.generate(request(null));
         Path root = paths.reportOutputDir().resolve("202611020330");
         String filename = "維運月度報表_10月彙總_202611020330.xlsx";

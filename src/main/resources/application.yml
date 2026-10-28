@@ -8,6 +8,8 @@ jasypt:
     bean: encryptorBean
 
 fsap:
+  report:
+    materialize-views: true
   paths:
     input-dir: 01_excel_input
     source-lake-dir: 02_source_lake

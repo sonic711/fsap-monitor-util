@@ -29,7 +29,7 @@ SQL execution uses JDBC `Statement`, not `JdbcTemplate` or parameter-bound `Prep
 ## Reports
 
 1. Resolve `ReportGenerationRequest`; create batch and `report-params.json`.
-2. Load macros and views; validate latest PR_CFG categories and log classification summary.
+2. Load macros and views; optionally materialize the five allowlisted report views as connection-local TEMP TABLEs; validate latest PR_CFG categories and log classification summary.
 3. Run ALL plus selected available business kinds. Every pass executes all report SQL in numeric-prefix order.
 4. Save ALL CSV/full workbook under `SUM/`; category CSV/full workbooks under category directories.
 5. `ComparisonWorkbookPlanner` selects already computed tables by configuration.
@@ -38,6 +38,8 @@ SQL execution uses JDBC `Statement`, not `JdbcTemplate` or parameter-bound `Prep
 Default composition is 10 overview sheets plus 8 per each of 7 kinds (including FAS): 66 sheets. Overview TOP6 update/query sheets use ALL results from reports 7.1/7.2. Daily/peak/history-peak sheets use SQL Pivot results. There is no `REPORT/` directory or configurable comparison filename anymore. ALL-only or disabled/empty comparison falls back to a copy of the full ALL workbook at the root.
 
 POI creates one style set per workbook and safe sheet names; Commons CSV writes UTF-8 BOM CSVs. Only recognized empty-projection Pivot errors become Message sheets. Other SQL failures cause a failing command; partial artifacts can remain.
+
+`ReportViewSnapshot` materializes available views in dependency order: v_cfg_pr_bzkind, v_rt_pr_hh24_clean, v_monthly_transaction_stats, v_prod_monitor_daily_count, v_prod_monitor_hourly_count. TEMP TABLEs shadow only this connection's lookups, retain the full original data range and disappear on close. Existing permanent tables and unrelated views are not materialized. `fsap.report.materialize-views` defaults to true in the JAR and can be overridden to false. Successful generation logs total elapsed time including materialization and output. See the human performance guide for measured results and known nondeterministic SQL ties/rounding; do not claim byte-identical workbooks.
 
 ## SFTP
 

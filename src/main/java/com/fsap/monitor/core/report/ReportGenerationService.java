@@ -22,6 +22,7 @@ import java.util.Comparator;
 import java.util.HashSet;
 import java.util.LinkedHashMap;
 import java.util.List;
+import java.util.Locale;
 import java.util.Map;
 import java.util.Set;
 import java.util.regex.Matcher;
@@ -99,6 +100,7 @@ public class ReportGenerationService {
      * 最後依設定把各輪結果合成一份跨分類比較活頁簿。
      */
     public ReportGenerationResult generate(ReportGenerationRequest request) {
+        long started = System.nanoTime();
         properties.getReport().validateConfiguration();
         ReportGenerationRequest effectiveRequest = reportParameterDefaultsService.resolve(request);
         String timestamp = effectiveRequest.timestamp() != null
@@ -138,6 +140,13 @@ public class ReportGenerationService {
 
             loadMacros(connection);
             syncViews(connection);
+
+            if (properties.getReport().isMaterializeViews()) {
+                long snapshotStarted = System.nanoTime();
+                int count = ReportViewSnapshot.prepare(connection);
+                logExecution(String.format(Locale.ROOT, "[效能] 本次產報暫存 %d 個 view，耗時 %.3f 秒",
+                        count, (System.nanoTime() - snapshotStarted) / 1_000_000_000.0));
+            }
 
             List<String> categoryProblems = PrCfgCategoryCheck.findProblems(connection);
             if (!categoryProblems.isEmpty()) {
@@ -189,6 +198,9 @@ public class ReportGenerationService {
         if (!failures.isEmpty()) {
             throw new IllegalStateException("Report generation completed with failures");
         }
+
+        logExecution(String.format(Locale.ROOT, "[效能] 產報總耗時 %.3f 秒",
+                (System.nanoTime() - started) / 1_000_000_000.0));
 
         return new ReportGenerationResult(timestamp, runDirectory, workbookPath, parametersFile, effectiveRequest, reportResults, failures,
                 passSummaries, comparisonWorkbookPath, notices);

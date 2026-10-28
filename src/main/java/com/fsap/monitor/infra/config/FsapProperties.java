@@ -151,9 +151,18 @@ public class FsapProperties {
      * 報表產出設定：額外要產出的業務分類，以及跨分類比較活頁簿。
      */
     public static class Report {
+        private boolean materializeViews = true;
         private List<String> targetBzkinds = new ArrayList<>();
         private final CombinedWorkbook combinedWorkbook = new CombinedWorkbook();
         private boolean targetBzkindsConfigured;
+
+        public boolean isMaterializeViews() {
+            return materializeViews;
+        }
+
+        public void setMaterializeViews(boolean materializeViews) {
+            this.materializeViews = materializeViews;
+        }
 
         public List<String> getTargetBzkinds() {
             return targetBzkinds;
