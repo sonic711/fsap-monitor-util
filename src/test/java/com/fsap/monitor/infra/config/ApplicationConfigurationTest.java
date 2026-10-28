@@ -48,7 +48,7 @@ class ApplicationConfigurationTest {
             var properties = context.getBean(FsapProperties.class);
             assertThat(properties.getReport().getTargetBzkinds())
                     .containsExactly("NCL", "NCB", "BIS", "FAC", "NIS", "FSAP");
-            assertThat(properties.getReport().getCombinedWorkbook().getAllSheets()).hasSize(7);
+            assertThat(properties.getReport().getCombinedWorkbook().getAllSheets()).hasSize(8);
             assertThat(properties.getReport().getCombinedWorkbook().getReports()).hasSize(8);
             properties.getReport().validateConfiguration();
             assertThat(properties.getIngest().getTargetSheets()).contains("PR_CFG");

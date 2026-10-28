@@ -35,7 +35,7 @@ SQL execution uses JDBC `Statement`, not `JdbcTemplate` or parameter-bound `Prep
 5. `ComparisonWorkbookPlanner` selects already computed tables by configuration.
 6. Publish the cross-kind workbook at batch root as `維運月度報表_MM月彙總_<yyyyMMddHHmm>.xlsx`.
 
-Default composition is 7 overview sheets plus 8 per each of 6 kinds: 55 sheets. Daily/peak/history-peak sheets use SQL Pivot results. There is no `REPORT/` directory or configurable comparison filename anymore. ALL-only or disabled/empty comparison falls back to a copy of the full ALL workbook at the root.
+Default composition is 8 overview sheets plus 8 per each of 6 kinds: 56 sheets. Daily/peak/history-peak sheets use SQL Pivot results. There is no `REPORT/` directory or configurable comparison filename anymore. ALL-only or disabled/empty comparison falls back to a copy of the full ALL workbook at the root.
 
 POI creates one style set per workbook and safe sheet names; Commons CSV writes UTF-8 BOM CSVs. Only recognized empty-projection Pivot errors become Message sheets. Other SQL failures cause a failing command; partial artifacts can remain.
 

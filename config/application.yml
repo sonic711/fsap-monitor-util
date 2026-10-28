@@ -46,6 +46,8 @@ fsap:
       all-sheets:
         - sheet-name: 總覽-交易量統計
           data-source: 1.交易量統計-當月.csv
+        - sheet-name: 總覽-CPU-MEM峰日峰時
+          data-source: 1.1.2. CPU-MEM監控-峰日峰時.csv
         - sheet-name: 總覽-當月每日
           data-source: 2.1.交易量統計-當月每日-Pivot.csv
         - sheet-name: 總覽-峰日峰時

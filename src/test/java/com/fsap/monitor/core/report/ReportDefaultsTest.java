@@ -38,7 +38,12 @@ class ReportDefaultsTest {
 
         var plan = ComparisonWorkbookPlanner.plan(config, tables, kinds);
         assertThat(plan.messages()).isEmpty();
-        assertThat(plan.sheets()).hasSize(55);
+        assertThat(plan.sheets()).hasSize(56);
+        assertThat(plan.sheets().get(1).sheetName()).isEqualTo("總覽-CPU-MEM峰日峰時");
+        assertThat(plan.sheets().get(1).table().rows().get(0))
+                .containsExactly("ALL", "1.1.2. CPU-MEM監控-峰日峰時.csv");
+        assertThat(plan.sheets().stream().filter(sheet -> sheet.sheetName().contains("CPU-MEM")).toList())
+                .hasSize(1);
         var fsapSheets = plan.sheets().stream().filter(sheet -> sheet.sheetName().startsWith("FSAP-")).toList();
         assertThat(fsapSheets).hasSize(8);
         assertThat(fsapSheets).allSatisfy(sheet ->

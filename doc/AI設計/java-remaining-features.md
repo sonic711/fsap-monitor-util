@@ -9,7 +9,7 @@ Checked against source on 2026-10-28. Version labels such as v1.0/v1.1/v1.2 were
 - Stable classpath defaults separated from external deployment/business rules; fail-fast missing-report-list validation and nested-JAR home resolution.
 - Excel → JSONL.GZ → external DuckDB views → classified reports.
 - Latest PR_CFG-driven names, business kinds and update/query categories; validation before reporting.
-- Six default kinds including FSAP, 55-sheet cross-kind final workbook, SUM outputs and root monthly workbook.
+- Six default kinds including FSAP, 56-sheet cross-kind final workbook, SUM outputs and root monthly workbook.
 - SQL Pivot selection for daily, peak-day/hour and historical peak sheets.
 - Daily generation and monthly generation/upload Jenkins pipelines, each with JVM tmpdir settings.
 - Web upload and ordered single-process tasks; report downloads and monitor CSV tables/charts.
