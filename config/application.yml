@@ -38,8 +38,6 @@ fsap:
     target-bzkinds:
       - NCL
       - NCB
-      - BIS
-      - FAC
       - FAS
       - NIS
       - FSAP
@@ -68,8 +66,6 @@ fsap:
       bzkinds:
         - NCL
         - NCB
-        - BIS
-        - FAC
         - FAS
         - NIS
         - FSAP
