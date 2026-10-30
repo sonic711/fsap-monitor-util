@@ -38,7 +38,6 @@ fsap:
     target-bzkinds:
       - NCL
       - NCB
-      - FAS
       - NIS
       - FSAP
     combined-workbook:
@@ -66,7 +65,6 @@ fsap:
       bzkinds:
         - NCL
         - NCB
-        - FAS
         - NIS
         - FSAP
       reports:
